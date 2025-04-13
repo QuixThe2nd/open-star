@@ -1,0 +1,17 @@
+{
+  "name": "open-star",
+  "module": "src/index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@types/express": "^5.0.1",
+    "@types/simple-peer": "^9.11.8",
+    "express": "^5.1.0",
+    "viem": "^2.26.3"
+  }
+}
