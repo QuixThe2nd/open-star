@@ -4,6 +4,7 @@ import tseslint from 'typescript-eslint';
 export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
+  ...tseslint.configs.recommendedTypeChecked,
   {
     languageOptions: {
       parser: tseslint.parser,
@@ -18,7 +19,8 @@ export default tseslint.config(
     rules: {
       "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
       "@typescript-eslint/explicit-function-return-type": "error",
-      "@typescript-eslint/consistent-type-assertions": "error"
+      "@typescript-eslint/consistent-type-assertions": "error",
+      "@typescript-eslint/no-explicit-any": "off",
     },
     ignores: ['dist/**', 'node_modules/**'],
   }

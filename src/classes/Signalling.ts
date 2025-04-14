@@ -5,19 +5,19 @@ import type { Hex } from 'viem';
 import type { KeyManager } from './KeyManager';
 
 type AnnounceMessage = { type: 'announce', from: Hex }
-type InitializeMessage = { type: 'initialize', to: Hex, from: Hex, data: string }
-type FinalizeMessage = { type: 'finalize', to: Hex, from: Hex, data: string }
+type InitializeMessage = { type: 'initialize', to: Hex, from: Hex, data: object }
+type FinalizeMessage = { type: 'finalize', to: Hex, from: Hex, data: object }
 type SignallingMessage = AnnounceMessage | InitializeMessage | FinalizeMessage
 
 export class Signalling<Message> {
   private readonly ws: WebSocket
   private readonly peers = new Map<string, PeerInstance>();
   private readonly onMessage: (_data: Message, _from: Hex, _callback: (_message: Message) => void) => void
-  private readonly onConnect: () => void
+  private readonly onConnect: () => Promise<void>
   private connected = false
   private readonly keyManager: KeyManager
 
-  constructor(onMessage: (_data: Message, _from: Hex, _callback: (_message: Message) => void) => void, onConnect: () => void, keyManager: KeyManager) {
+  constructor(onMessage: (_data: Message, _from: Hex, _callback: (_message: Message) => void) => void, onConnect: () => Promise<void>, keyManager: KeyManager) {
     this.onMessage = onMessage
     this.onConnect = onConnect
     this.keyManager = keyManager
@@ -47,21 +47,23 @@ export class Signalling<Message> {
     
     peer.on('connect', () => {
       if (!this.connected) {
-        this.onConnect()
+        this.onConnect().catch(console.error)
         this.connected = true
       }
     });
-    peer.on('data', async (data) => {
-      const { signature, message } = JSON.parse(data)
-      if (await this.keyManager.verify(signature, JSON.stringify(message), from)) {
-        const msg = JSON.stringify(message)
-        const signature = await this.keyManager.sign(msg)
-        this.onMessage(message, from, (msg) => peer.send(JSON.stringify({ message: msg, signature })))
-      }
+    peer.on('data', (data: string): void => {
+      const { signature, message } = JSON.parse(data) as { signature: Hex, message: Message }
+      this.keyManager.verify(signature, JSON.stringify(message), from).then(async status => {
+        if (status) {
+          const msg = JSON.stringify(message)
+          const signature = await this.keyManager.sign(msg)
+          this.onMessage(message, from, (msg) => peer.send(JSON.stringify({ message: msg, signature })))
+        }
+      }).catch(console.error)
     });
     peer.on('error', () => this.peers.delete(from));
     peer.on('close', () => this.peers.delete(from));
-    peer.on('signal', signalData => this.send({ type: initiator ? 'initialize' : 'finalize', to: from, from: this.keyManager.getPublicKey(), data: signalData }));
+    peer.on('signal', (data: object) => this.send({ type: initiator ? 'initialize' : 'finalize', to: from, from: this.keyManager.getPublicKey(), data: data }));
 
     return peer;
   }
@@ -79,12 +81,12 @@ export class Signalling<Message> {
   }
   // Step 3. Save candidates and send candidates back
   private readonly finalize = (message: InitializeMessage): void => {
-    console.log('3. Saving & sending candidates')
+    console.log('3. Sending candidate')
     this.createPeer(message.from, false).signal(message.data);
   }
   // Step 4. Save candidates
   private readonly signal = (message: FinalizeMessage): void => {
-    console.log('4. Saving candidates')
+    console.log('4. Saving candidate')
     this.peers.get(message.from)?.signal(message.data);
   }
   /******* Handshake - END */
