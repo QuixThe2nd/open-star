@@ -9,30 +9,21 @@ export class KeyManager {
   private mnemonic!: string;
   private account!: ReturnType<typeof mnemonicToAccount>;
 
-  private constructor() {}
-
-  static async init(): Promise<KeyManager> {
-    const keyManager = new KeyManager();
-    if (fs.existsSync(keyManager.keyFile)) {
-      const file = fs.readFileSync(keyManager.keyFile, 'utf-8');
-      const { mnemonic } = JSON.parse(file);
-      await keyManager.loadFromMnemonic(mnemonic);
+  constructor() {
+    if (fs.existsSync(this.keyFile)) {
+      const file = fs.readFileSync(this.keyFile, 'utf-8');
+      const { mnemonic } = JSON.parse(file) as { mnemonic: string };
+      this.loadFromMnemonic(mnemonic);
     } else {
-      await keyManager.generateAndSaveKeyPair();
+      const mnemonic = generateMnemonic(wordlist); // 12-word BIP-39 mnemonic
+      this.loadFromMnemonic(mnemonic);
+      fs.writeFileSync(this.keyFile, JSON.stringify({ mnemonic }, null, 2));
     }
-    return keyManager;
   }
 
-  private async generateAndSaveKeyPair(): Promise<void> {
-    const mnemonic = generateMnemonic(wordlist); // 12-word BIP-39 mnemonic
-    await this.loadFromMnemonic(mnemonic);
-    fs.writeFileSync(this.keyFile, JSON.stringify({ mnemonic }, null, 2));
-  }
-
-  private async loadFromMnemonic(mnemonic: string): Promise<void> {
-    const account = mnemonicToAccount(mnemonic);
+  private loadFromMnemonic(mnemonic: string): void {
     this.mnemonic = mnemonic;
-    this.account = account;
+    this.account = mnemonicToAccount(mnemonic);
   }
 
   async sign(message: string): Promise<Hex> {
