@@ -1,6 +1,6 @@
 import { mnemonicToAccount, generateMnemonic } from 'viem/accounts';
 import { verifyMessage } from 'viem/utils';
-import * as fs from 'fs/promises';
+import * as fs from 'fs';
 import type { Hex } from 'viem';
 import { wordlist } from '@scure/bip39/wordlists/english';
 
@@ -13,8 +13,8 @@ export class KeyManager {
 
   static async init(): Promise<KeyManager> {
     const keyManager = new KeyManager();
-    if (await fs.exists(keyManager.keyFile)) {
-      const file = await fs.readFile(keyManager.keyFile, 'utf-8');
+    if (await fs.existsSync(keyManager.keyFile)) {
+      const file = fs.readFileSync(keyManager.keyFile, 'utf-8');
       const { mnemonic } = JSON.parse(file);
       await keyManager.loadFromMnemonic(mnemonic);
     } else {
@@ -26,7 +26,7 @@ export class KeyManager {
   private async generateAndSaveKeyPair(): Promise<void> {
     const mnemonic = generateMnemonic(wordlist); // 12-word BIP-39 mnemonic
     await this.loadFromMnemonic(mnemonic);
-    await fs.writeFile(this.keyFile, JSON.stringify({ mnemonic }, null, 2));
+    fs.writeFileSync(this.keyFile, JSON.stringify({ mnemonic }, null, 2));
   }
 
   private async loadFromMnemonic(mnemonic: string): Promise<void> {
