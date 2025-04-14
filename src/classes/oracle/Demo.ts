@@ -12,7 +12,7 @@ interface DemoMethods extends Methods {
 export class DemoOracle implements Oracle<Message, State, DemoMethods> {
   public readonly name = 'demo' // Note that the name must be unique and not used by other oracles
   private state: State = { value: 0 }
-  public peerStates: PeerStates = {}
+  public readonly peerStates: PeerStates = {}
 
   getState = (): State => this.state;
 

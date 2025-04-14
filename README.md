@@ -41,7 +41,7 @@ export class DemoOracle implements Oracle<Message, State, DemoMethods> {
 Inside your oracle class, define your state with a getter as well as a variable to keep track of other peers' states:
 ```ts
 private state: State = { value: 0 }
-public peerStates: PeerStates = {}
+public readonly peerStates: PeerStates = {}
 
 getState = (): State => this.state;
 ```
