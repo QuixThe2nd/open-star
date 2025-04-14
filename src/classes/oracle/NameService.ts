@@ -4,13 +4,12 @@ import type { Signalling } from "../Signalling";
 import type { KeyManager } from "../KeyManager";
 
 type State = { [pubKey: Hex]: { hostnames: `${string}.star`[], balance: bigint } }
-export type SerializedState = { [pubKey: Hex]: { hostnames: `${string}.star`[], balance: Hex } }
-export interface NameServiceMethods extends Methods {
+type SerializedState = { [pubKey: Hex]: { hostnames: `${string}.star`[], balance: Hex } }
+interface NameServiceMethods extends Methods {
   mint: (_args: { to: Hex, amount: bigint }) => true | string;
   burn: (_args: { to: Hex, amount: bigint }) => true | string;
   register: (_args: { from: Hex, hostname: `${string}.star`, signature: Hex }) => Promise<true | string>;
 }
-// type Message = ['nameService', 'call', ...MethodToTuple<NameServiceMethods>] | ['nameService', 'state', SerializedNameServiceState] | [ 'ping' | 'pong' ]
 type PeerStates = { [from: `0x${string}`]: { lastSend: SerializedState; lastReceive: SerializedState; reputation: number | null } }
 
 function serialize(state: State): SerializedState {
@@ -167,7 +166,6 @@ export class NameServiceOracle implements Oracle<Message, 'nameService', Seriali
       await new Promise((res) => setTimeout(res, 100))
       mostCommonState = mode(Object.values(this.peerStates).map(state => state.lastReceive))
     }
-    console.log('aaaa', mostCommonState)
     this.state = deserialize(mostCommonState)
     signalling.sendMessage([ this.name, 'state', mostCommonState ]).catch(console.error)
   }

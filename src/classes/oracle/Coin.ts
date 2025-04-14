@@ -10,9 +10,8 @@ interface CoinMethods extends Methods {
 }
 
 type State = { [pubKey: string]: bigint }
-export type SerializedState = { [pubKey: string]: Hex }
+type SerializedState = { [pubKey: string]: Hex }
 type PeerStates = { [from: Hex]: { lastSend: SerializedState, lastReceive: SerializedState, reputation: number | null } }
-// type Message = ['coin', 'call', ...MethodToTuple<CoinMethods>] | ['coin', 'state', SerializedCoinState] | [ 'ping' | 'pong']
 
 function serialize(state: State): SerializedState {
   const serializedObj: SerializedState = {}
