@@ -17,7 +17,8 @@ export default tseslint.config(
     },
     rules: {
       "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
-      "@typescript-eslint/explicit-function-return-type": ["error"]
+      "@typescript-eslint/explicit-function-return-type": "error",
+      "@typescript-eslint/consistent-type-assertions": "error"
     },
     ignores: ['dist/**', 'node_modules/**'],
   }

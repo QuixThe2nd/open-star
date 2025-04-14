@@ -1,17 +1,18 @@
 import { recoverAddress, type Hex } from 'viem';
 import { KeyManager } from "../KeyManager";
 import type { Signalling } from '../Signalling';
-
-export type CoinState = { [pubKey: string]: bigint }
-export type SerializedCoinState = { [pubKey: string]: `0x${string}` }
-type PeerState = { lastSend: CoinState, lastReceive: CoinState, reputation: number | null }
-type PeerStates = { [from: Hex]: PeerState }
+import type { MethodToTuple, Oracle } from '../..';
 
 export interface CoinMethods {
   mint: (_args: { to: Hex, amount: bigint }) => true | string;
   burn: (_args: { to: Hex, amount: bigint }) => true | string;
   transfer: (_args: { from: Hex, to: Hex, amount: bigint, time: number, signature: Hex | { r: Hex; s: Hex; v: bigint; yParity: number }, hash?: Hex }) => Promise<true | string>;
 }
+
+export type CoinState = { [pubKey: string]: bigint }
+export type SerializedCoinState = { [pubKey: string]: `0x${string}` }
+type PeerStates = { [from: Hex]: { lastSend: CoinState, lastReceive: CoinState, reputation: number | null } }
+type Message = ['coin', 'call', ...MethodToTuple<CoinMethods>] | ['coin', 'state', SerializedCoinState]
 
 export function serialize(state: CoinState): SerializedCoinState {
   const serializedObj: SerializedCoinState = {}
@@ -37,12 +38,13 @@ function sortObjectByKeys<T extends object>(obj: T): T {
   return sortedObj;
 }
 
-
-export class CoinOracle {
+export class CoinOracle implements Oracle<Message, 'coin', CoinState> {
   private state: CoinState = {}
   private readonly keyManager: KeyManager
   private readonly decimalMultiplier = BigInt("1".padEnd(19, '0'))
   private mempool: Parameters<CoinMethods['transfer']>[0][] = []
+  public readonly name = 'coin'
+  public readonly peerStates: PeerStates = {}
   private readonly coinMethods: CoinMethods = {
 
     mint: (args: Parameters<CoinMethods['mint']>[0]): ReturnType<CoinMethods['mint']> => { // TODO: Temporary PoW challenge to get coins, only for initial distribution
@@ -124,14 +126,15 @@ export class CoinOracle {
     return Math.pow(stakingYield, 1 / ((365 * 24 * 60 * 60 * 1000) / epochTime)) - 1;
   }
 
-  onEpoch(peerStates: PeerStates, epochTime: number, signalling: Signalling<CoinMethods, SerializedCoinState>): void {
+  onEpoch(peerStates: PeerStates, epochTime: number, signalling: Signalling<Message>): void {
     console.log('Epoch:', new Date().toISOString());
     const myState = this.getState()
 
     const blockYield = this.blockYield(peerStates, epochTime)
 
     let netReputation = 0;
-    for (const peer of Object.keys(peerStates) as (keyof PeerStates)[]) {
+    for (const _peer in peerStates) {
+      const peer = _peer as keyof PeerStates
       const state = peerStates[peer]!
       if (state.reputation === null) {
         delete peerStates[peer]
@@ -160,12 +163,12 @@ export class CoinOracle {
     return this.coinMethods[method](args);
   }
 
-  onCall<T extends keyof CoinMethods>(method: T, _args: Parameters<CoinMethods[T]>[0], signalling: Signalling<CoinMethods, SerializedCoinState>): void {
+  onCall<T extends keyof CoinMethods>(method: T, _args: Parameters<CoinMethods[T]>[0], signalling: Signalling<Message>): void {
     if (method === 'transfer') {
       const args = _args as Parameters<CoinMethods['transfer']>[0]
       if (!this.mempool.some(tx => tx.signature === args.signature)) {
         this.mempool.push(args)
-        signalling.sendMessage([ 'call', method, args ])
+        signalling.sendMessage([ 'coin', 'call', method, args ])
         this.call('transfer', args)
       }
     }

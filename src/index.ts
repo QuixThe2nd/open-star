@@ -1,37 +1,59 @@
 import type { Hex } from "viem";
 import { KeyManager } from "./classes/KeyManager";
-import { Signalling, type MessageType } from "./classes/Signalling";
-import { CoinOracle, type CoinMethods, type CoinState, type SerializedCoinState, serialize, deserialize } from './classes/oracle/Coin';
+import { Signalling } from "./classes/Signalling";
+import { CoinOracle, type CoinMethods, type SerializedCoinState, serialize, deserialize, type CoinState } from './classes/oracle/Coin';
 
-type PeerState = { lastSend: CoinState, lastReceive: CoinState, reputation: number | null }
-type PeerStates = { [from: Hex]: PeerState }
+export type MethodToTuple<Methods extends object> = {
+  [MethodName in keyof Methods]:
+    Methods[MethodName] extends (_args: infer Args) => unknown ? [MethodName, Args] : never
+}[keyof Methods]
+type MessageType<
+  OracleName extends string,
+  OracleMethods extends object,
+  SerializedState extends object
+> = 
+  | [OracleName, 'call', ...MethodToTuple<OracleMethods>]
+  | [OracleName, 'state', SerializedState]
+  | ['ping' | 'pong'];
+type Message<OracleName extends string, OracleMethods extends object, SerializedState extends object> = MessageType<OracleName, OracleMethods, SerializedState>
+type PeerStates<State> = { [from: Hex]: { lastSend: State, lastReceive: State, reputation: number | null } }
 
-const mode = <T>(arr: T[]): T | undefined => arr.toSorted((a,b) => arr.filter(v => v===a).length - arr.filter(v => v===b).length).pop();
+export interface Oracle<Message, Name extends string, State extends object> {
+  name: Name
+  getState: () => State
+  setState: (_state: State) => void
+  peerStates: PeerStates<State>
+  onEpoch: (_peerStates: PeerStates<State>, _epochTime: number, _signalling: Signalling<Message>) => void
+  onCall: <T extends keyof CoinMethods>(_method: T, _args: Parameters<CoinMethods[T]>[0], _signalling: Signalling<Message>) => void
+}
 
-class OpenStar {
-  private readonly coinOracle: CoinOracle
-  private readonly signalling: Signalling<CoinMethods, SerializedCoinState>
-  private readonly peerStates: PeerStates = {}
+const mode = <State>(arr: State[]): State | undefined => arr.toSorted((a,b) => arr.filter(v => v===a).length - arr.filter(v => v===b).length).pop();
+
+class OpenStar<Name extends 'coin'> {
+  private readonly oracles: Map<Name, Oracle<Message<Name, CoinMethods, SerializedCoinState>, Name, CoinState>>;
+  private readonly signalling: Signalling<Message<Name, CoinMethods, SerializedCoinState>>
   private readonly epochTime = 5_000
   private epochCount = -1
 
-  constructor(keyManager: KeyManager) {
-    this.coinOracle = new CoinOracle(keyManager)
-    this.signalling = new Signalling<CoinMethods, SerializedCoinState>(this.onMessage, this.onConnect, keyManager)
+  constructor(keyManager: KeyManager, oracles: Map<Name, Oracle<Message<Name, CoinMethods, SerializedCoinState>, Name, CoinState>>) {
+    this.oracles = oracles
+    this.signalling = new Signalling<Message<Name, CoinMethods, SerializedCoinState>>(this.onMessage, this.onConnect, keyManager)
   }
 
   private readonly onConnect = async (): Promise<void> => {
     console.log('Connected')
-    this.signalling.sendMessage([ 'state', serialize(this.coinOracle.getState()) ])
+    for (const [oracleName, oracle] of this.oracles) {
+      this.signalling.sendMessage([ oracleName, 'state', serialize(oracle.getState()) ])
 
-    let mostCommonState = undefined
-    while (mostCommonState == undefined) {
-      await new Promise((res) => setTimeout(res, 100))
-      mostCommonState = mode(Object.values(this.peerStates).map(state => state.lastReceive))
+      let mostCommonState = undefined
+      while (mostCommonState == undefined) {
+        await new Promise((res) => setTimeout(res, 100))
+        mostCommonState = mode(Object.values(oracle.peerStates).map(state => state.lastReceive))
+      }
+      console.log(mostCommonState)
+      oracle.setState(mostCommonState)
+      this.signalling.sendMessage([ oracle.name, 'state', serialize(mostCommonState) ])
     }
-    console.log(mostCommonState)
-    this.coinOracle.setState(mostCommonState)
-    this.signalling.sendMessage([ 'state', serialize(mostCommonState) ])
 
     const startTime = +new Date();
     await new Promise((res) => setTimeout(res, (Math.floor(startTime / this.epochTime) + 1) * this.epochTime - startTime))
@@ -39,33 +61,47 @@ class OpenStar {
     setInterval(this.epoch, this.epochTime);
   }
 
-  private readonly onMessage = (message: MessageType<CoinMethods, SerializedCoinState>, from: Hex, callback: (_message: MessageType<CoinMethods, SerializedCoinState>) => void): void => {
+  private readonly onMessage = (message: Message<Name, CoinMethods, SerializedCoinState>, from: Hex, callback: (_message: Message<Name, CoinMethods, SerializedCoinState>) => void): void => {
     console.log('Received message:', message[0], 'from', from.slice(0, 8) + '...')
     if (message[0] === 'ping') callback([ 'pong' ])
-    else if (message[0] === 'state') {
-      if(!this.peerStates[from]) this.peerStates[from] = { lastReceive: {}, lastSend: {}, reputation: 0 }
-      this.peerStates[from].lastReceive = deserialize(message[1])
-
-      const state = this.coinOracle.getState()
-      if (JSON.stringify(serialize(state)) !== JSON.stringify(serialize(this.peerStates[from].lastSend))) {
-        this.peerStates[from].lastSend = state
-        callback([ 'state', serialize(state) ])
+    else if (message[0] === 'pong') console.log('pong')
+    else {
+      const oracleName = message[0]
+      const oracle = this.oracles.get(oracleName)
+      if (!oracle) {
+        console.error('Unknown Oracle')
+        return
       }
+      if (message[1] === 'state') {
+        if(!oracle.peerStates[from]) oracle.peerStates[from] = { lastReceive: {}, lastSend: {}, reputation: 0 }
+        oracle.peerStates[from].lastReceive = deserialize(message[2])
 
-      if (this.peerStates[from].reputation === null) this.peerStates[from].reputation = 0
-      if (JSON.stringify(serialize(this.peerStates[from].lastSend)) === JSON.stringify(serialize(this.peerStates[from].lastReceive))) this.peerStates[from].reputation++ // TODO: stake weighted voting
-      else if (this.epochCount <= 0) this.peerStates[from].reputation--
-    } else if (message[0] === 'call') {
-      this.coinOracle.onCall(message[1], message[2], this.signalling)
+        const state = oracle.getState()
+        if (JSON.stringify(serialize(state)) !== JSON.stringify(serialize(oracle.peerStates[from].lastSend))) {
+          oracle.peerStates[from].lastSend = state
+          callback([ message[0], 'state', serialize(state) ])
+        }
+
+        if (oracle.peerStates[from].reputation === null) oracle.peerStates[from].reputation = 0
+        if (JSON.stringify(serialize(oracle.peerStates[from].lastSend)) === JSON.stringify(serialize(oracle.peerStates[from].lastReceive))) oracle.peerStates[from].reputation++ // TODO: stake weighted voting
+        else if (this.epochCount <= 0) oracle.peerStates[from].reputation--
+      } else if (message[1] === 'call') {
+        oracle.onCall(message[2], message[3], this.signalling)
+      }
     }
   }
 
   private readonly epoch = (): void => {
     this.epochCount++
-    this.coinOracle.onEpoch(this.peerStates, this.epochTime, this.signalling)
-    this.signalling.sendMessage([ 'state', serialize(this.coinOracle.getState()) ])
+    for (const [oracleName, oracle] of this.oracles) {
+      oracle.onEpoch(oracle.peerStates, this.epochTime, this.signalling)
+      this.signalling.sendMessage([ oracleName, 'state', serialize(oracle.getState()) ])
+    }
   }
 }
 
-const openStar = new OpenStar(await KeyManager.init())
+const keyManager = await KeyManager.init()
+const oracles = new Map()
+oracles.set('coin', new CoinOracle(keyManager))
+const openStar = new OpenStar<'coin'>(keyManager, oracles)
 console.log(openStar)

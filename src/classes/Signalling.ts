@@ -7,19 +7,17 @@ import type { KeyManager } from './KeyManager';
 type AnnounceMessage = { type: 'announce', from: Hex }
 type InitializeMessage = { type: 'initialize', to: Hex, from: Hex, data: string }
 type FinalizeMessage = { type: 'finalize', to: Hex, from: Hex, data: string }
-type Message = AnnounceMessage | InitializeMessage | FinalizeMessage
-type MethodToTuple<T extends object> = [ 'call', ...{ [K in keyof T]: T[K] extends (_args: infer Args) => unknown ? [K, Args] : never }[keyof T] ]
-export type MessageType<T extends object, S extends object> = MethodToTuple<T> | [ 'state', S ] | [ 'ping' | 'pong' ]
+type SignallingMessage = AnnounceMessage | InitializeMessage | FinalizeMessage
 
-export class Signalling<T extends object, S extends object> {
+export class Signalling<Message> {
   private readonly ws: WebSocket
   private readonly peers = new Map<string, PeerInstance>();
-  private readonly onMessage: (_data: MessageType<T, S>, _from: Hex, _callback: (_message: MessageType<T, S>) => void) => void
+  private readonly onMessage: (_data: Message, _from: Hex, _callback: (_message: Message) => void) => void
   private readonly onConnect: () => void
   private connected = false
   private readonly keyManager: KeyManager
 
-  constructor(onMessage: (_data: MessageType<T, S>, _from: Hex, _callback: (_message: MessageType<T, S>) => void) => void, onConnect: () => void, keyManager: KeyManager) {
+  constructor(onMessage: (_data: Message, _from: Hex, _callback: (_message: Message) => void) => void, onConnect: () => void, keyManager: KeyManager) {
     this.onMessage = onMessage
     this.onConnect = onConnect
     this.keyManager = keyManager
@@ -32,7 +30,7 @@ export class Signalling<T extends object, S extends object> {
   }
 
   private readonly onWsMessage = (data: string): void => {
-    const message = JSON.parse(data) as Message;
+    const message = JSON.parse(data) as SignallingMessage;
 
     if (message.from === this.keyManager.getPublicKey()) return;
     else if (message.type === 'announce' && message.from !== this.keyManager.getPublicKey()) this.initialize(message)
@@ -40,7 +38,7 @@ export class Signalling<T extends object, S extends object> {
     else if (message.type === 'finalize' && message.to === this.keyManager.getPublicKey()) this.signal(message)
   }
 
-  private readonly send = (message: Message): void => this.ws.send(JSON.stringify(message))
+  private readonly send = (message: SignallingMessage): void => this.ws.send(JSON.stringify(message))
 
   private readonly createPeer = (from: Hex, initiator: boolean): Peer.Instance => {
     if (this.peers.has(from)) return this.peers.get(from)!
@@ -91,7 +89,7 @@ export class Signalling<T extends object, S extends object> {
   }
   /******* Handshake - END */
 
-  public readonly sendMessage = async (message: MessageType<T, S>): Promise<number> => {
+  public readonly sendMessage = async (message: Message): Promise<number> => {
     const signature = await this.keyManager.sign(JSON.stringify(message))
 
     let i = 0
