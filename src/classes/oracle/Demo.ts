@@ -13,6 +13,7 @@ export class DemoOracle implements Oracle<Message, State, DemoMethods> {
   public readonly name = 'demo' // Note that the name must be unique and not used by other oracles
   private state: State = { value: 0 }
   public readonly peerStates: PeerStates = {}
+  private mempool: Parameters<DemoMethods['add' | 'subtract']>[0][] = []
 
   getState = (): State => this.state;
 
@@ -48,13 +49,11 @@ export class DemoOracle implements Oracle<Message, State, DemoMethods> {
     // @ts-expect-error: The TS linter is stupid
     return this.methods[method](args);
   }
-  
-  mempool: Parameters<DemoMethods['add' | 'subtract']>[0][] = []
 
   onCall = async <T extends keyof Methods & string>(method: T, args: Parameters<DemoMethods[T]>[0], signalling: Signalling<Message>): Promise<void> => {
     if (!this.mempool.some(tx => JSON.stringify(tx) === JSON.stringify(args))) { // This should be done via signatures or something similar
       this.mempool.push(args)
-      signalling.sendMessage([ 'demo', 'call', method, args ]).catch(console.error)
+      signalling.sendMessage([ this.name, 'call', method, args ]).catch(console.error)
       await this.call(method, args)
     }
   }

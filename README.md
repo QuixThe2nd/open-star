@@ -71,7 +71,7 @@ onConnect = async (signalling: Signalling<Message>): Promise<void> => {
 }
 ```
 
-Then implement methods you defined earlier and define a function to call the methods:
+Then implement the methods you defined earlier and define a function to call the methods:
 ```ts
 private readonly methods: DemoMethods = {
   add: (args: Parameters<DemoMethods['add']>[0]): ReturnType<DemoMethods['add']> => {
@@ -94,12 +94,12 @@ call<T extends keyof DemoMethods>(method: T, args: Parameters<DemoMethods[T]>[0]
 
 Now you need to define the function that processes calls received from peers as well as a mempool to prevent duplicates
 ```ts
-mempool: Parameters<DemoMethods['add' | 'subtract']>[0][] = []
+private mempool: Parameters<DemoMethods['add' | 'subtract']>[0][] = []
 
 onCall = async <T extends keyof Methods & string>(method: T, args: Parameters<DemoMethods[T]>[0], signalling: Signalling<Message>): Promise<void> => {
   if (!this.mempool.some(tx => JSON.stringify(tx) === JSON.stringify(args))) { // This should be done via signatures or something similar
     this.mempool.push(args)
-    signalling.sendMessage([ 'demo', 'call', method, args ]).catch(console.error)
+    signalling.sendMessage([ this.name, 'call', method, args ]).catch(console.error)
     await this.call(method, args)
   }
 }
