@@ -11,7 +11,7 @@ interface CoinMethods extends Methods {
 
 type State = { [pubKey: string]: bigint }
 type SerializedState = { [pubKey: string]: Hex }
-type PeerStates = { [from: Hex]: { lastSend: SerializedState, lastReceive: SerializedState, reputation: number | null } }
+type PeerStates = { [from: Hex]: { lastSend: SerializedState, lastReceive: SerializedState, reputation: number } }
 
 function serialize(state: State): SerializedState {
   const serializedObj: SerializedState = {}
@@ -29,7 +29,7 @@ function deserialize(state: SerializedState): State {
   return serializedObj
 }
 
-export class CoinOracle implements Oracle<Message, 'coin', SerializedState, CoinMethods> {
+export class CoinOracle implements Oracle<Message, SerializedState, CoinMethods> {
   private state: State = {}
   private readonly keyManager: KeyManager
   private mempool: Parameters<CoinMethods['transfer']>[0][] = []
@@ -121,12 +121,11 @@ export class CoinOracle implements Oracle<Message, 'coin', SerializedState, Coin
       if (state.reputation > 0) {
         console.log('[COIN] Rewarding', peer.slice(0, 8) + '...')
         this.call('mint', { to: peer, amount: myState[peer] ? BigInt(Math.floor(Number(myState[peer])*blockYield)) : parseEther('1') })
-        state.reputation = 0
       } else if (state.reputation < 0 && myState[peer]) {
         console.log('[COIN] Slashing', peer.slice(0, 8) + '...')
         this.call('burn', { to: peer, amount: (myState[peer]*9n)/10n })
-        state.reputation = 0
       }
+      state.reputation = 0
     }
     if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
     this.call('mint', { to: signalling.address, amount: myState[signalling.address] ? BigInt(Math.floor(Number(myState[signalling.address])*blockYield)) : parseEther('1') })
@@ -140,7 +139,7 @@ export class CoinOracle implements Oracle<Message, 'coin', SerializedState, Coin
     return this.methods[method](args);
   }
 
-  onCall<T extends keyof CoinMethods>(method: T, _args: Parameters<CoinMethods[T]>[0], signalling: Signalling<Message>): void {
+  onCall<T extends keyof CoinMethods & string>(method: T, _args: Parameters<CoinMethods[T]>[0], signalling: Signalling<Message>): void {
     if (method === 'transfer') {
       const args = _args as Parameters<CoinMethods['transfer']>[0]
       if (!this.mempool.some(tx => tx.signature === args.signature)) {

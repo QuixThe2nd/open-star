@@ -10,7 +10,7 @@ interface NameServiceMethods extends Methods {
   burn: (_args: { to: Hex, amount: bigint }) => true | string;
   register: (_args: { from: Hex, hostname: `${string}.star`, signature: Hex }) => Promise<true | string>;
 }
-type PeerStates = { [from: `0x${string}`]: { lastSend: SerializedState; lastReceive: SerializedState; reputation: number | null } }
+type PeerStates = { [from: `0x${string}`]: { lastSend: SerializedState; lastReceive: SerializedState; reputation: number } }
 
 function serialize(state: State): SerializedState {
   const serializedObj: SerializedState = {}
@@ -34,7 +34,7 @@ function deserialize(state: SerializedState): State {
   return serializedObj
 }
 
-export class NameServiceOracle implements Oracle<Message, 'nameService', SerializedState, NameServiceMethods> {
+export class NameServiceOracle implements Oracle<Message, SerializedState, NameServiceMethods> {
   public readonly name = "nameService";
   private state: State = {}
   public readonly peerStates: PeerStates = {};
@@ -129,12 +129,11 @@ export class NameServiceOracle implements Oracle<Message, 'nameService', Seriali
       if (state.reputation > 0) {
         console.log('[NAMESERVICE] Rewarding', peer.slice(0, 8) + '...')
         this.call('mint', { to: peer, amount: myState[peer]?.balance ? BigInt(Math.floor(Number(myState[peer].balance)*blockYield)) : parseEther('1') })
-        state.reputation = 0
       } else if (state.reputation < 0 && myState[peer]) {
         console.log('[NAMESERVICE] Slashing', peer.slice(0, 8) + '...')
         this.call('burn', { to: peer, amount: (myState[peer].balance*9n)/10n })
-        state.reputation = 0
       }
+      state.reputation = 0
     }
     if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
     this.call('mint', { to: signalling.address, amount: myState[signalling.address]?.balance ? BigInt(Math.floor(Number(myState[signalling.address]?.balance)*blockYield)) : parseEther('1') })
@@ -147,7 +146,7 @@ export class NameServiceOracle implements Oracle<Message, 'nameService', Seriali
     return this.methods[method](args);
   }
 
-  onCall<T extends keyof NameServiceMethods>(method: T, _args: Parameters<NameServiceMethods[T]>[0], signalling: Signalling<Message>): void {
+  onCall<T extends keyof NameServiceMethods & string>(method: T, _args: Parameters<NameServiceMethods[T]>[0], signalling: Signalling<Message>): void {
     if (method === 'register') {
       const args = _args as Parameters<NameServiceMethods['register']>[0]
       if (!this.mempool.some(tx => tx.signature === args.signature)) {

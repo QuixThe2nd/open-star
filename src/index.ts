@@ -3,13 +3,16 @@ import { KeyManager } from "./classes/KeyManager";
 import { Signalling } from "./classes/Signalling";
 import { CoinOracle } from './classes/oracle/Coin';
 import { NameServiceOracle } from "./classes/oracle/NameService";
+import { DemoOracle } from "./classes/oracle/Demo";
+
 
 const keyManager = new KeyManager()
 
 /** CONFIG START */
 const oraclesDefinition = {
   coin: new CoinOracle(keyManager),
-  nameService: new NameServiceOracle(keyManager)
+  nameService: new NameServiceOracle(keyManager),
+  demo: new DemoOracle()
 }
 /** CONFIG END */
 
@@ -20,12 +23,13 @@ type MessageType<OracleName extends string, OracleMethods extends object, Serial
 export type Message = MessageType<OracleNames, Methods, Oracles extends { getState(): infer R } ? R : never>
 export type Methods = { [key: string]: (_args: any ) => Promise<true | string> | true | string }
 
-export interface Oracle<Message, Name extends string, State extends object, OracleMethods extends Methods> {
-  name: Name
+export interface Oracle<Message, State extends object, OracleMethods extends Methods> {
+  name: string
   getState: () => State
   onEpoch: (_signalling: Signalling<Message>, _epochTime: number) => void
-  onCall: <T extends keyof Methods>(_method: T, _args: Parameters<OracleMethods[T]>[0], _signalling: Signalling<Message>) => void
-  onConnect: (_signalling: Signalling<Message>) => Promise<void>
+  onCall: <T extends keyof Methods & string>(_method: T, _args: Parameters<OracleMethods[T]>[0], _signalling: Signalling<Message>) => Promise<void> | void
+  onConnect: (_signalling: Signalling<Message>) => Promise<void> | void
+  peerStates: { [from: `0x${string}`]: { lastSend: State; lastReceive: State; reputation: number } }
 }
 
 export const mode = <State>(arr: State[]): State | undefined => arr.toSorted((a,b) => arr.filter(v => v===a).length - arr.filter(v => v===b).length).pop();
@@ -52,7 +56,7 @@ class OpenStar {
   private readonly onConnect = async (): Promise<void> => {
     console.log('[OPENSTAR] Connected')
     for (const oracle of this.oracles.values()) {
-      oracle.onConnect(this.signalling).catch(console.error)
+      await oracle.onConnect(this.signalling)
     }
 
     const startTime = +new Date();
@@ -86,7 +90,7 @@ class OpenStar {
         if (JSON.stringify(oracle.peerStates[from].lastSend) === JSON.stringify(oracle.peerStates[from].lastReceive)) oracle.peerStates[from].reputation++ // TODO: stake weighted voting
         else if (this.epochCount <= 0) oracle.peerStates[from].reputation--
       } else if (message[1] === 'call') {
-        oracle.onCall(message[2], message[3], this.signalling)
+        Promise.resolve(oracle.onCall(message[2], message[3], this.signalling)).catch(console.error)
       }
     }
   }
