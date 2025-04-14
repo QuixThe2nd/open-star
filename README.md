@@ -105,7 +105,7 @@ onCall = async <T extends keyof Methods & string>(method: T, args: Parameters<De
 }
 ```
 
-Finally define a function that runs on each epoch, this should handle yield/slashing:
+Finally define a function that runs on each epoch (every 5 seconds, similar to a blockchain's onBlock), this should handle yield/slashing:
 ```ts
 onEpoch = (): void => {
   let netReputation = 0;
