@@ -2,7 +2,7 @@ import { type Methods, type Message, type Oracle } from '../..';
 import type { Signalling } from '../Signalling';
 
 type State = { value: number }
-type PeerStates = { [from: `0x${string}`]: { lastSend: State; lastReceive: State; reputation: number } }
+type PeerStates = { [from: `0x${string}`]: { lastSend: State; lastReceive: State; reputation: number | null } }
 
 interface DemoMethods extends Methods {
   add: (_args: { value: number }) => true | string;
@@ -73,7 +73,7 @@ export class DemoOracle implements Oracle<Message, State, DemoMethods> {
       } else if (state.reputation < 0) {
         // Punish bad peers
       }
-      state.reputation = 0
+      state.reputation = null
     }
     if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
 

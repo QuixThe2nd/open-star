@@ -29,7 +29,7 @@ export interface Oracle<Message, State extends object, OracleMethods extends Met
   onEpoch: (_signalling: Signalling<Message>, _epochTime: number) => void
   onCall: <T extends keyof Methods & string>(_method: T, _args: Parameters<OracleMethods[T]>[0], _signalling: Signalling<Message>) => Promise<void> | void
   onConnect: (_signalling: Signalling<Message>) => Promise<void> | void
-  peerStates: { [from: `0x${string}`]: { lastSend: State; lastReceive: State; reputation: number } }
+  peerStates: { [from: `0x${string}`]: { lastSend: State; lastReceive: State; reputation: number | null } }
 }
 
 export const mode = <State>(arr: State[]): State | undefined => arr.toSorted((a,b) => arr.filter(v => v===a).length - arr.filter(v => v===b).length).pop();

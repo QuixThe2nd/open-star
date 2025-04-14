@@ -48,7 +48,7 @@ getState = (): State => this.state;
 
 Then place this outside the class:
 ```ts
-type PeerStates = { [from: `0x${string}`]: { lastSend: State; lastReceive: State; reputation: number } }
+type PeerStates = { [from: `0x${string}`]: { lastSend: State; lastReceive: State; reputation: number | null } }
 ```
 
 Now write your startup function. This will run when you first connect to the network and should be used to sync to the current state:
@@ -122,7 +122,7 @@ onEpoch = (): void => {
     } else if (state.reputation < 0) {
       // Punish bad peers
     }
-    state.reputation = 0
+    state.reputation = null
   }
   if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
 

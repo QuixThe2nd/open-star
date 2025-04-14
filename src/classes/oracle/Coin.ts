@@ -11,7 +11,7 @@ interface CoinMethods extends Methods {
 
 type State = { [pubKey: string]: bigint }
 type SerializedState = { [pubKey: string]: Hex }
-type PeerStates = { [from: Hex]: { lastSend: SerializedState, lastReceive: SerializedState, reputation: number } }
+type PeerStates = { [from: Hex]: { lastSend: SerializedState, lastReceive: SerializedState, reputation: number | null } }
 
 function serialize(state: State): SerializedState {
   const serializedObj: SerializedState = {}
@@ -125,7 +125,7 @@ export class CoinOracle implements Oracle<Message, SerializedState, CoinMethods>
         console.log('[COIN] Slashing', peer.slice(0, 8) + '...')
         this.call('burn', { to: peer, amount: (myState[peer]*9n)/10n })
       }
-      state.reputation = 0
+      state.reputation = null
     }
     if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
     this.call('mint', { to: signalling.address, amount: myState[signalling.address] ? BigInt(Math.floor(Number(myState[signalling.address])*blockYield)) : parseEther('1') })

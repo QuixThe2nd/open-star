@@ -10,7 +10,7 @@ interface NameServiceMethods extends Methods {
   burn: (_args: { to: Hex, amount: bigint }) => true | string;
   register: (_args: { from: Hex, hostname: `${string}.star`, signature: Hex }) => Promise<true | string>;
 }
-type PeerStates = { [from: `0x${string}`]: { lastSend: SerializedState; lastReceive: SerializedState; reputation: number } }
+type PeerStates = { [from: `0x${string}`]: { lastSend: SerializedState; lastReceive: SerializedState; reputation: number | null } }
 
 function serialize(state: State): SerializedState {
   const serializedObj: SerializedState = {}
@@ -133,7 +133,7 @@ export class NameServiceOracle implements Oracle<Message, SerializedState, NameS
         console.log('[NAMESERVICE] Slashing', peer.slice(0, 8) + '...')
         this.call('burn', { to: peer, amount: (myState[peer].balance*9n)/10n })
       }
-      state.reputation = 0
+      state.reputation = null
     }
     if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
     this.call('mint', { to: signalling.address, amount: myState[signalling.address]?.balance ? BigInt(Math.floor(Number(myState[signalling.address]?.balance)*blockYield)) : parseEther('1') })
