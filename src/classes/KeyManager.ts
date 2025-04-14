@@ -13,7 +13,7 @@ export class KeyManager {
 
   static async init(): Promise<KeyManager> {
     const keyManager = new KeyManager();
-    if (await fs.existsSync(keyManager.keyFile)) {
+    if (fs.existsSync(keyManager.keyFile)) {
       const file = fs.readFileSync(keyManager.keyFile, 'utf-8');
       const { mnemonic } = JSON.parse(file);
       await keyManager.loadFromMnemonic(mnemonic);
