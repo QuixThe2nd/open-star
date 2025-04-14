@@ -1,36 +1,28 @@
 import type { Hex } from "viem";
 import { KeyManager } from "./classes/KeyManager";
 import { Signalling } from "./classes/Signalling";
-import { CoinOracle, type SerializedState as SerializedCoinState } from './classes/oracle/Coin';
-import { NameServiceOracle, type SerializedState as SerializedNameServiceState } from "./classes/oracle/NameService";
+import { CoinOracle } from './classes/oracle/Coin';
+import { NameServiceOracle } from "./classes/oracle/NameService";
 
-export type MethodToTuple<Methods extends object> = {
-  [MethodName in keyof Methods]:
-    Methods[MethodName] extends (_args: infer Args) => unknown ? [MethodName, Args] : never
-}[keyof Methods]
-type MessageType<
-  OracleName extends string,
-  OracleMethods extends object,
-  SerializedState extends object
-> = 
-  | [OracleName, 'call', ...MethodToTuple<OracleMethods>]
-  | [OracleName, 'state', SerializedState]
-  | ['ping' | 'pong'];
-type OracleNames = 'coin' | 'nameService'
-type Oracles = Map<OracleNames, CoinOracle | NameServiceOracle>
-type OracleState = SerializedCoinState | SerializedNameServiceState
-export type Message = MessageType<OracleNames, Methods, OracleState>
-type PeerStates<State> = { [from: Hex]: { lastSend: State, lastReceive: State, reputation: number | null } }
-export type Methods = { [key: string]: (_args: any ) => Promise<true | string> | true | string }
+const keyManager = new KeyManager()
 
-export interface CoinMethods extends Methods {
-  mint: (_args: { to: Hex, amount: bigint }) => Promise<true | string>;
+/** CONFIG START */
+const oraclesDefinition = {
+  coin: new CoinOracle(keyManager),
+  nameService: new NameServiceOracle(keyManager)
 }
+/** CONFIG END */
+
+export type MethodToTuple<Methods extends object> = { [MethodName in keyof Methods]: Methods[MethodName] extends (_args: infer Args) => unknown ? [MethodName, Args] : never }[keyof Methods]
+type Oracles = typeof oraclesDefinition[keyof typeof oraclesDefinition]
+type OracleNames = keyof typeof oraclesDefinition;
+type MessageType<OracleName extends string, OracleMethods extends object, SerializedState extends object> = [OracleName, 'call', ...MethodToTuple<OracleMethods>] | [OracleName, 'state', SerializedState] | ['ping' | 'pong'];
+export type Message = MessageType<OracleNames, Methods, Oracles extends { getState(): infer R } ? R : never>
+export type Methods = { [key: string]: (_args: any ) => Promise<true | string> | true | string }
 
 export interface Oracle<Message, Name extends string, State extends object, OracleMethods extends Methods> {
   name: Name
   getState: () => State
-  peerStates: PeerStates<State>
   onEpoch: (_signalling: Signalling<Message>, _epochTime: number) => void
   onCall: <T extends keyof Methods>(_method: T, _args: Parameters<OracleMethods[T]>[0], _signalling: Signalling<Message>) => void
   onConnect: (_signalling: Signalling<Message>) => Promise<void>
@@ -47,13 +39,13 @@ export function sortObjectByKeys<T extends object>(obj: T): T {
 }
 
 class OpenStar {
-  private readonly oracles: Oracles;
+  private readonly oracles: typeof oracles;
   private readonly signalling: Signalling<Message>
   private readonly epochTime = 5_000
   private epochCount = -1
 
-  constructor(keyManager: KeyManager, oracles: Oracles) {
-    this.oracles = oracles
+  constructor(keyManager: KeyManager, newOracles: typeof oracles) {
+    this.oracles = newOracles
     this.signalling = new Signalling<Message>(this.onMessage, this.onConnect, keyManager)
   }
 
@@ -109,9 +101,7 @@ class OpenStar {
   }
 }
 
-const keyManager = await KeyManager.init()
-const oracles: Oracles = new Map<OracleNames, CoinOracle | NameServiceOracle>()
-oracles.set('coin', new CoinOracle(keyManager))
-oracles.set('nameService', new NameServiceOracle(keyManager))
+const oracleEntries = Object.entries(oraclesDefinition) as [OracleNames, typeof oraclesDefinition[OracleNames]][]
+const oracles = new Map<OracleNames, Oracles>(oracleEntries)
 const openStar = new OpenStar(keyManager, oracles)
 console.log('[OPENSTAR]', openStar)
