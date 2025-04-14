@@ -11,25 +11,25 @@ export class KeyManager {
 
   private constructor() {}
 
-  static async init() {
+  static async init(): Promise<KeyManager> {
     const keyManager = new KeyManager();
-    try {
+    if (await fs.exists(keyManager.keyFile)) {
       const file = await fs.readFile(keyManager.keyFile, 'utf-8');
       const { mnemonic } = JSON.parse(file);
       await keyManager.loadFromMnemonic(mnemonic);
-    } catch (_) {
+    } else {
       await keyManager.generateAndSaveKeyPair();
     }
     return keyManager;
   }
 
-  private async generateAndSaveKeyPair() {
+  private async generateAndSaveKeyPair(): Promise<void> {
     const mnemonic = generateMnemonic(wordlist); // 12-word BIP-39 mnemonic
     await this.loadFromMnemonic(mnemonic);
     await fs.writeFile(this.keyFile, JSON.stringify({ mnemonic }, null, 2));
   }
 
-  private async loadFromMnemonic(mnemonic: string) {
+  private async loadFromMnemonic(mnemonic: string): Promise<void> {
     const account = mnemonicToAccount(mnemonic);
     this.mnemonic = mnemonic;
     this.account = account;

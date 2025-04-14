@@ -8,12 +8,12 @@ type PeerState = { lastSend: CoinState, lastReceive: CoinState, reputation: numb
 type PeerStates = { [from: Hex]: PeerState }
 
 export interface CoinMethods {
-  mint: (args: { to: Hex, amount: bigint }) => true | string;
-  burn: (args: { to: Hex, amount: bigint }) => true | string;
-  transfer: (args: { from: Hex, to: Hex, amount: bigint, time: number, signature: Hex | { r: Hex; s: Hex; v: bigint; yParity: number }, hash?: Hex }) => Promise<true | string>;
+  mint: (_args: { to: Hex, amount: bigint }) => true | string;
+  burn: (_args: { to: Hex, amount: bigint }) => true | string;
+  transfer: (_args: { from: Hex, to: Hex, amount: bigint, time: number, signature: Hex | { r: Hex; s: Hex; v: bigint; yParity: number }, hash?: Hex }) => Promise<true | string>;
 }
 
-export function serialize(state: CoinState) {
+export function serialize(state: CoinState): SerializedCoinState {
   const serializedObj: SerializedCoinState = {}
   Object.entries(state).forEach(([key, value]) => {
     serializedObj[key] = `0x${value.toString(16)}`
@@ -21,7 +21,7 @@ export function serialize(state: CoinState) {
   return serializedObj
 }
 
-export function deserialize(state: SerializedCoinState) {
+export function deserialize(state: SerializedCoinState): CoinState {
   const serializedObj: CoinState = {}
   Object.entries(state).forEach(([key, value]) => {
     serializedObj[key] = BigInt(value)
@@ -90,7 +90,7 @@ export class CoinOracle {
     this.keyManager = keyManager
   }
 
-  getState() {
+  getState(): CoinState {
     const obj: CoinState = {}
     Object.entries(this.state).forEach(([key, value]) => {
       obj[key] = value
@@ -98,17 +98,17 @@ export class CoinOracle {
     return sortObjectByKeys(obj)
   }
 
-  getBalance(address: Hex) {
+  getBalance(address: Hex): bigint {
     const lowercaseAddress = address.toLowerCase()
     const realAddress = Object.keys(this.state).find(key => key.toLowerCase() === lowercaseAddress)
     return realAddress ? this.state[realAddress]! : 0n
   }
 
-  setState(state: CoinState) {
+  setState(state: CoinState): void {
     this.state = state
   }
 
-  blockYield(peerStates: PeerStates, epochTime: number) {
+  blockYield(peerStates: PeerStates, epochTime: number): number {
     const state = this.getState()
     let supply = 0n
     Object.keys(state).forEach(peer => {
@@ -124,16 +124,19 @@ export class CoinOracle {
     return Math.pow(stakingYield, 1 / ((365 * 24 * 60 * 60 * 1000) / epochTime)) - 1;
   }
 
-  onEpoch(peerStates: PeerStates, epochTime: number, signalling: Signalling<CoinMethods, SerializedCoinState>) {
+  onEpoch(peerStates: PeerStates, epochTime: number, signalling: Signalling<CoinMethods, SerializedCoinState>): void {
     console.log('Epoch:', new Date().toISOString());
     const myState = this.getState()
 
     const blockYield = this.blockYield(peerStates, epochTime)
 
     let netReputation = 0;
-    (Object.keys(peerStates) as (keyof PeerStates)[]).forEach((peer) => {
+    for (const peer of Object.keys(peerStates) as (keyof PeerStates)[]) {
       const state = peerStates[peer]!
-      if (state.reputation === null) return delete peerStates[peer]
+      if (state.reputation === null) {
+        delete peerStates[peer]
+        return
+      }
       netReputation += state.reputation;
       if (state.reputation > 0) {
         console.log('Rewarding', peer.slice(0, 8) + '...')
@@ -144,7 +147,7 @@ export class CoinOracle {
         this.call('burn', { to: peer, amount: (myState[peer]*9n)/10n })
         state.reputation = 0
       }
-    })
+    }
     if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
     this.call('mint', { to: signalling.address, amount: myState[signalling.address] ? BigInt(Math.floor(Number(myState[signalling.address])*blockYield)) : this.decimalMultiplier })
     
@@ -153,11 +156,11 @@ export class CoinOracle {
   }
 
   call<T extends keyof CoinMethods>(method: T, args: Parameters<CoinMethods[T]>[0]): ReturnType<CoinMethods[T]> {
-    // @ts-expect-error:
+    // @ts-expect-error: The TS linter is stupid
     return this.coinMethods[method](args);
   }
 
-  onCall<T extends keyof CoinMethods>(method: T, _args: Parameters<CoinMethods[T]>[0], signalling: Signalling<CoinMethods, SerializedCoinState>) {
+  onCall<T extends keyof CoinMethods>(method: T, _args: Parameters<CoinMethods[T]>[0], signalling: Signalling<CoinMethods, SerializedCoinState>): void {
     if (method === 'transfer') {
       const args = _args as Parameters<CoinMethods['transfer']>[0]
       if (!this.mempool.some(tx => tx.signature === args.signature)) {

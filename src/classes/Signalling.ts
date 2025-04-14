@@ -8,18 +8,18 @@ type AnnounceMessage = { type: 'announce', from: Hex }
 type InitializeMessage = { type: 'initialize', to: Hex, from: Hex, data: string }
 type FinalizeMessage = { type: 'finalize', to: Hex, from: Hex, data: string }
 type Message = AnnounceMessage | InitializeMessage | FinalizeMessage
-type MethodToTuple<T extends object> = [ 'call', ...{ [K in keyof T]: T[K] extends (args: infer Args) => any ? [K, Args] : never }[keyof T] ]
+type MethodToTuple<T extends object> = [ 'call', ...{ [K in keyof T]: T[K] extends (_args: infer Args) => unknown ? [K, Args] : never }[keyof T] ]
 export type MessageType<T extends object, S extends object> = MethodToTuple<T> | [ 'state', S ] | [ 'ping' | 'pong' ]
 
-export class Signalling<T extends Object, S extends object> {
+export class Signalling<T extends object, S extends object> {
   private readonly ws: WebSocket
   private readonly peers = new Map<string, PeerInstance>();
-  private readonly onMessage: (data: MessageType<T, S>, from: Hex, callback: (message: MessageType<T, S>) => void) => void
+  private readonly onMessage: (_data: MessageType<T, S>, _from: Hex, _callback: (_message: MessageType<T, S>) => void) => void
   private readonly onConnect: () => void
   private connected = false
   private readonly keyManager: KeyManager
 
-  constructor(onMessage: (data: MessageType<T, S>, from: Hex, callback: (message: MessageType<T, S>) => void) => void, onConnect: () => void, keyManager: KeyManager) {
+  constructor(onMessage: (_data: MessageType<T, S>, _from: Hex, _callback: (_message: MessageType<T, S>) => void) => void, onConnect: () => void, keyManager: KeyManager) {
     this.onMessage = onMessage
     this.onConnect = onConnect
     this.keyManager = keyManager
@@ -31,7 +31,7 @@ export class Signalling<T extends Object, S extends object> {
     this.ws.on('message', this.onWsMessage);
   }
 
-  private readonly onWsMessage = (data: string) => {
+  private readonly onWsMessage = (data: string): void => {
     const message = JSON.parse(data) as Message;
 
     if (message.from === this.keyManager.getPublicKey()) return;
@@ -40,9 +40,9 @@ export class Signalling<T extends Object, S extends object> {
     else if (message.type === 'finalize' && message.to === this.keyManager.getPublicKey()) this.signal(message)
   }
 
-  private readonly send = (message: Message) => this.ws.send(JSON.stringify(message))
+  private readonly send = (message: Message): void => this.ws.send(JSON.stringify(message))
 
-  private readonly createPeer = (from: Hex, initiator: boolean) => {
+  private readonly createPeer = (from: Hex, initiator: boolean): Peer.Instance => {
     if (this.peers.has(from)) return this.peers.get(from)!
     const peer: PeerInstance = new Peer({ initiator, wrtc: WebRTC })
     this.peers.set(from, peer);
@@ -70,22 +70,22 @@ export class Signalling<T extends Object, S extends object> {
 
   /******* Handshake - START */
   // Step 1. Announce self to room
-  private readonly announce = () => {
+  private readonly announce = (): void => {
     console.log('1. Announcing')
     this.send({ type: 'announce', from: this.keyManager.getPublicKey() })
   }
   // Step 2. Send candidate to peer
-  private readonly initialize = (message: AnnounceMessage) => {
+  private readonly initialize = (message: AnnounceMessage): Peer.Instance => {
     console.log('2. Sending candidates')
     return this.createPeer(message.from, true)
   }
   // Step 3. Save candidates and send candidates back
-  private readonly finalize = (message: InitializeMessage) => {
+  private readonly finalize = (message: InitializeMessage): void => {
     console.log('3. Saving & sending candidates')
     this.createPeer(message.from, false).signal(message.data);
   }
   // Step 4. Save candidates
-  private readonly signal = (message: FinalizeMessage) => {
+  private readonly signal = (message: FinalizeMessage): void => {
     console.log('4. Saving candidates')
     this.peers.get(message.from)?.signal(message.data);
   }
@@ -108,7 +108,7 @@ export class Signalling<T extends Object, S extends object> {
     return i
   }
 
-  get address() {
+  get address(): Hex {
     return this.keyManager.getPublicKey()
   }
 }
