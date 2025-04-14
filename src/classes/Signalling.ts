@@ -1,23 +1,25 @@
 import WebSocket from 'ws'
 import Peer, { type Instance as PeerInstance } from 'simple-peer'
 import WebRTC from '@roamhq/wrtc'
-import type { KeyManager } from './KeyManager';
 import type { Hex } from 'viem';
+import type { KeyManager } from './KeyManager';
 
 type AnnounceMessage = { type: 'announce', from: Hex }
 type InitializeMessage = { type: 'initialize', to: Hex, from: Hex, data: string }
 type FinalizeMessage = { type: 'finalize', to: Hex, from: Hex, data: string }
 type Message = AnnounceMessage | InitializeMessage | FinalizeMessage
+type MethodToTuple<T extends object> = [ 'call', ...{ [K in keyof T]: T[K] extends (args: infer Args) => any ? [K, Args] : never }[keyof T] ]
+export type MessageType<T extends object, S extends object> = MethodToTuple<T> | [ 'state', S ] | [ 'ping' | 'pong' ]
 
-export class Signalling<T extends Object> {
-  ws: WebSocket
-  peers = new Map<string, PeerInstance>();
-  onMessage: (data: T, from: Hex, callback: (message: T) => void) => void
-  onConnect: () => void
-  connected = false
-  keyManager: KeyManager
+export class Signalling<T extends Object, S extends object> {
+  private readonly ws: WebSocket
+  private readonly peers = new Map<string, PeerInstance>();
+  private readonly onMessage: (data: MessageType<T, S>, from: Hex, callback: (message: MessageType<T, S>) => void) => void
+  private readonly onConnect: () => void
+  private connected = false
+  private readonly keyManager: KeyManager
 
-  constructor(onMessage: (data: T, from: Hex, callback: (message: T) => void) => void, onConnect: () => void, keyManager: KeyManager) {
+  constructor(onMessage: (data: MessageType<T, S>, from: Hex, callback: (message: MessageType<T, S>) => void) => void, onConnect: () => void, keyManager: KeyManager) {
     this.onMessage = onMessage
     this.onConnect = onConnect
     this.keyManager = keyManager
@@ -89,7 +91,7 @@ export class Signalling<T extends Object> {
   }
   /******* Handshake - END */
 
-  public readonly sendMessage = async (message: T): Promise<number> => {
+  public readonly sendMessage = async (message: MessageType<T, S>): Promise<number> => {
     const signature = await this.keyManager.sign(JSON.stringify(message))
 
     let i = 0
