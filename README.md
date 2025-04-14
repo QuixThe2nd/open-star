@@ -2,13 +2,15 @@
 Open Star is a ledger-free consensus mechanism inspired by oracles. It aims to achieve the same functionality of classic blockchains without the overhead.
 
 ## How it works
-Open Star is a framework that allows for consensus to be achieved around arbitrary information. By default, Open Star has 2 oracles, which are included in this repository, a `coin` oracle and a `nameService` oracle. You can find these oracles at `./src/classes/oracle/*.ts`. Oracles can form consensus around any form of information, using any consensus rules. It is fully customizable, and can be as decentralized (or centralized) as you need.
+Open Star is a framework that allows for consensus to be achieved around arbitrary information. By default, Open Star has 3 oracles, which are included in this repository, a `coin` oracle and a `nameService` oracle. You can find these oracles at `./src/classes/oracle/*.ts`. Oracles can form consensus around any form of information, using any consensus rules. It is fully customizable, and can be as decentralized (or centralized) as you need.
 
 ## Running
 To run Open Star, execute:
 ```sh
 npx tsx src/index.ts
 ```
+
+If the script stalls at `Announcing`, run a second node. This happens when no peers are online.
 
 ## Creating an Oracle
 To create an oracle, create a file at `./src/classes/oracle/Demo.ts`, then define the type your state follows:
