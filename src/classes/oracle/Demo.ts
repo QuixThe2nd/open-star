@@ -32,6 +32,30 @@ export class DemoOracle implements Oracle<Message, State, DemoMethods> {
     signalling.sendMessage([ this.name, 'state', mostCommonState ]).catch(console.error)
   }
 
+  onEpoch = (): void => {
+    let netReputation = 0;
+    for (const _peer in this.peerStates) {
+      const peer = _peer as keyof PeerStates
+      const state = this.peerStates[peer]!
+      if (state.reputation === null) {
+        delete this.peerStates[peer]
+        return
+      }
+      netReputation += state.reputation;
+      if (state.reputation > 0) {
+        // Reward good peers
+      } else if (state.reputation < 0) {
+        // Punish bad peers
+      }
+      state.reputation = null
+    }
+    if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
+
+    // Remember to reward/punish yourself the same way others would to you
+
+    this.mempool = []
+  }
+
   private readonly methods: DemoMethods = {
     add: (args: Parameters<DemoMethods['add']>[0]): ReturnType<DemoMethods['add']> => {
       if (args.value <= 0) return 'Value must be positive'
@@ -56,29 +80,5 @@ export class DemoOracle implements Oracle<Message, State, DemoMethods> {
       signalling.sendMessage([ this.name, 'call', method, args ]).catch(console.error)
       await this.call(method, args)
     }
-  }
-
-  onEpoch = (): void => {
-    let netReputation = 0;
-    for (const _peer in this.peerStates) {
-      const peer = _peer as keyof PeerStates
-      const state = this.peerStates[peer]!
-      if (state.reputation === null) {
-        delete this.peerStates[peer]
-        return
-      }
-      netReputation += state.reputation;
-      if (state.reputation > 0) {
-        // Reward good peers
-      } else if (state.reputation < 0) {
-        // Punish bad peers
-      }
-      state.reputation = null
-    }
-    if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
-
-    // Remember to reward/punish yourself the same way others would to you
-
-    this.mempool = []
   }
 }
