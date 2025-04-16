@@ -1,7 +1,7 @@
 import { parseEther, type Hex } from 'viem';
 import { KeyManager } from "../KeyManager";
 import type { Signalling } from '../Signalling';
-import { mode, sortObjectByKeys, type Message, type Methods, type Oracle } from '../..';
+import { mode, sortObjectByKeys, type Message, type Methods, type Oracle, type PeerStates } from '../..';
 
 interface CoinMethods extends Methods {
   mint: (_args: { to: Hex, amount: bigint }) => true | string;
@@ -11,7 +11,6 @@ interface CoinMethods extends Methods {
 
 type State = { [pubKey: string]: bigint }
 type SerializedState = { [pubKey: string]: Hex }
-type PeerStates = { [from: Hex]: { lastSend: SerializedState, lastReceive: SerializedState, reputation: number | null } }
 
 function serialize(state: State): SerializedState {
   const serializedObj: SerializedState = {}
@@ -34,7 +33,7 @@ export class CoinOracle implements Oracle<Message, SerializedState, CoinMethods>
   private readonly keyManager: KeyManager
   private mempool: Parameters<CoinMethods['transfer']>[0][] = []
   public readonly name = 'coin'
-  public readonly peerStates: PeerStates = {}
+  public readonly peerStates: PeerStates<SerializedState> = {}
 
   constructor (keyManager: KeyManager) {
     this.keyManager = keyManager
@@ -93,11 +92,11 @@ export class CoinOracle implements Oracle<Message, SerializedState, CoinMethods>
     const state = this.state
     let supply = 0n
     Object.keys(state).forEach(peer => {
-      supply += state[peer as keyof PeerStates]!
+      supply += state[peer as keyof PeerStates<SerializedState>]!
     })
     let coinsStaked = 0n
     Object.keys(this.peerStates).forEach(peer => {
-      coinsStaked += state[peer as keyof PeerStates] ?? 0n
+      coinsStaked += state[peer as keyof PeerStates<SerializedState>] ?? 0n
     })
 
     const stakingRate = coinsStaked === 0n || supply === 0n ? 1 : Number(coinsStaked) / Number(supply)
@@ -111,7 +110,7 @@ export class CoinOracle implements Oracle<Message, SerializedState, CoinMethods>
 
     let netReputation = 0;
     for (const _peer in this.peerStates) {
-      const peer = _peer as keyof PeerStates
+      const peer = _peer as keyof PeerStates<SerializedState>
       const state = this.peerStates[peer]!
       if (state.reputation === null) {
         delete this.peerStates[peer]

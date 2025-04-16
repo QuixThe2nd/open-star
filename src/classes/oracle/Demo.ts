@@ -1,8 +1,7 @@
-import { type Methods, type Message, type Oracle } from '../..';
+import { type Methods, type Message, type Oracle, type PeerStates } from '../..';
 import type { Signalling } from '../Signalling';
 
 type State = { value: number }
-type PeerStates = { [from: `0x${string}`]: { lastSend: State; lastReceive: State; reputation: number | null } }
 
 interface DemoMethods extends Methods {
   add: (_args: { value: number }) => true | string;
@@ -12,7 +11,7 @@ interface DemoMethods extends Methods {
 export class DemoOracle implements Oracle<Message, State, DemoMethods> {
   public readonly name = 'demo' // Note that the name must be unique and not used by other oracles
   private state: State = { value: 0 }
-  public readonly peerStates: PeerStates = {}
+  public readonly peerStates: PeerStates<State> = {}
   private mempool: Parameters<DemoMethods['add' | 'subtract']>[0][] = []
 
   getState = (): State => this.state;
@@ -35,7 +34,7 @@ export class DemoOracle implements Oracle<Message, State, DemoMethods> {
   onEpoch = (): void => {
     let netReputation = 0;
     for (const _peer in this.peerStates) {
-      const peer = _peer as keyof PeerStates
+      const peer = _peer as keyof PeerStates<State>
       const state = this.peerStates[peer]!
       if (state.reputation === null) {
         delete this.peerStates[peer]

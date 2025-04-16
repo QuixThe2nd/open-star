@@ -22,6 +22,7 @@ type OracleNames = keyof typeof oraclesDefinition;
 type MessageType<OracleName extends string, OracleMethods extends object, SerializedState extends object> = [OracleName, 'call', ...MethodToTuple<OracleMethods>] | [OracleName, 'state', SerializedState] | ['ping' | 'pong'];
 export type Message = MessageType<OracleNames, Methods, Oracles extends { getState(): infer R } ? R : never>
 export type Methods = { [key: string]: (_args: any ) => Promise<true | string> | true | string }
+export type PeerStates<State> = { [from: `0x${string}`]: { lastSend: State; lastReceive: State; reputation: number | null } }
 
 export interface Oracle<Message, State extends object, OracleMethods extends Methods> {
   name: string
@@ -29,7 +30,7 @@ export interface Oracle<Message, State extends object, OracleMethods extends Met
   onEpoch: (_signalling: Signalling<Message>, _epochTime: number) => void
   onCall: <T extends keyof Methods & string>(_method: T, _args: Parameters<OracleMethods[T]>[0], _signalling: Signalling<Message>) => Promise<void> | void
   onConnect: (_signalling: Signalling<Message>) => Promise<void> | void
-  peerStates: { [from: `0x${string}`]: { lastSend: State; lastReceive: State; reputation: number | null } }
+  peerStates: PeerStates<State>
 }
 
 export const mode = <State>(arr: State[]): State | undefined => arr.toSorted((a,b) => arr.filter(v => v===a).length - arr.filter(v => v===b).length).pop();

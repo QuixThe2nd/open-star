@@ -1,5 +1,5 @@
 import { parseEther, type Hex } from "viem";
-import { mode, sortObjectByKeys, type Message, type Methods, type Oracle } from "../..";
+import { mode, sortObjectByKeys, type Message, type Methods, type Oracle, type PeerStates } from "../..";
 import type { Signalling } from "../Signalling";
 import type { KeyManager } from "../KeyManager";
 
@@ -10,7 +10,6 @@ interface NameServiceMethods extends Methods {
   burn: (_args: { to: Hex, amount: bigint }) => true | string;
   register: (_args: { from: Hex, hostname: `${string}.star`, signature: Hex }) => Promise<true | string>;
 }
-type PeerStates = { [from: `0x${string}`]: { lastSend: SerializedState; lastReceive: SerializedState; reputation: number | null } }
 
 function serialize(state: State): SerializedState {
   const serializedObj: SerializedState = {}
@@ -37,7 +36,7 @@ function deserialize(state: SerializedState): State {
 export class NameServiceOracle implements Oracle<Message, SerializedState, NameServiceMethods> {
   public readonly name = "nameService";
   private state: State = {}
-  public readonly peerStates: PeerStates = {};
+  public readonly peerStates: PeerStates<SerializedState> = {};
   private readonly keyManager: KeyManager
   private mempool: Parameters<NameServiceMethods['register']>[0][] = []
 
@@ -93,11 +92,11 @@ export class NameServiceOracle implements Oracle<Message, SerializedState, NameS
     const state = this.state
     let supply = 0n
     Object.keys(state).forEach(peer => {
-      supply += state[peer as keyof PeerStates]!.balance
+      supply += state[peer as keyof PeerStates<SerializedState>]!.balance
     })
     let coinsStaked = 0n
     Object.keys(this.peerStates).forEach(peer => {
-      coinsStaked += state[peer as keyof PeerStates]?.balance ?? 0n
+      coinsStaked += state[peer as keyof PeerStates<SerializedState>]?.balance ?? 0n
     })
 
     const stakingRate = coinsStaked === 0n || supply === 0n ? 1 : Number(coinsStaked) / Number(supply)
@@ -119,7 +118,7 @@ export class NameServiceOracle implements Oracle<Message, SerializedState, NameS
 
     let netReputation = 0;
     for (const _peer in this.peerStates) {
-      const peer = _peer as keyof PeerStates
+      const peer = _peer as keyof PeerStates<SerializedState>
       const state = this.peerStates[peer]!
       if (state.reputation === null) {
         delete this.peerStates[peer]

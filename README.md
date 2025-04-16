@@ -38,17 +38,17 @@ export class DemoOracle implements Oracle<Message, State, DemoMethods> {
 }
 ```
 
+Import the PeerStates type:
+```ts
+import { type PeerStates } from '../..';
+```
+
 Inside your oracle class, define your state with a getter as well as a variable to keep track of other peers' states:
 ```ts
 private state: State = { value: 0 }
-public readonly peerStates: PeerStates = {}
+public readonly peerStates: PeerStates<State> = {}
 
 getState = (): State => this.state;
-```
-
-Then place this outside the class:
-```ts
-type PeerStates = { [from: `0x${string}`]: { lastSend: State; lastReceive: State; reputation: number | null } }
 ```
 
 Now write your startup function. This will run when you first connect to the network and should be used to sync to the current state:
@@ -110,7 +110,7 @@ Finally define a function that runs on each epoch (every 5 seconds, similar to a
 onEpoch = (): void => {
   let netReputation = 0;
   for (const _peer in this.peerStates) {
-    const peer = _peer as keyof PeerStates
+    const peer = _peer as keyof PeerStates<State>
     const state = this.peerStates[peer]!
     if (state.reputation === null) {
       delete this.peerStates[peer]
