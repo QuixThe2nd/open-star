@@ -39,22 +39,22 @@ export class NameServiceOracle implements Oracle<Message, SerializedState, NameS
   public readonly peerStates: PeerStates<SerializedState> = {};
   private readonly keyManager: KeyManager
   private mempool: Parameters<NameServiceMethods['register']>[0][] = []
+  public readonly boilerplateState: SerializedState = {}
 
   constructor (keyManager: KeyManager) {
     this.keyManager = keyManager
   }
 
   private readonly methods: NameServiceMethods = {
-    mint: (args: Parameters<NameServiceMethods['mint']>[0]): ReturnType<NameServiceMethods['mint']> => { // TODO: Temporary PoW challenge to get coins, only for initial distribution
+    mint: (args: Parameters<NameServiceMethods['mint']>[0]): ReturnType<NameServiceMethods['mint']> => {
       const to = args.to
       const amount = args.amount
 
-      if(!this.state[to]) this.state[to] = { hostnames: [], balance: 0n }
+      this.state[to] ??= { hostnames: [], balance: 0n }
       this.state[to].balance += amount
 
       return true
     },
-
     burn: (args: Parameters<NameServiceMethods['burn']>[0]): ReturnType<NameServiceMethods['burn']> => {
       const to = args.to
       const amount = args.amount
@@ -65,7 +65,7 @@ export class NameServiceOracle implements Oracle<Message, SerializedState, NameS
 
       return true
     },
-    register: async (args: Parameters<NameServiceMethods['register']>[0]): ReturnType<NameServiceMethods['register']> => { // TODO: Temporary PoW challenge to get coins, only for initial distribution
+    register: async (args: Parameters<NameServiceMethods['register']>[0]): ReturnType<NameServiceMethods['register']> => {
       const from = args.from
       const hostname = args.hostname
       const signature = args.signature

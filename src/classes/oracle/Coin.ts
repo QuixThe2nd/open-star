@@ -34,6 +34,7 @@ export class CoinOracle implements Oracle<Message, SerializedState, CoinMethods>
   private mempool: Parameters<CoinMethods['transfer']>[0][] = []
   public readonly name = 'coin'
   public readonly peerStates: PeerStates<SerializedState> = {}
+  public readonly boilerplateState: SerializedState = {}
 
   constructor (keyManager: KeyManager) {
     this.keyManager = keyManager
@@ -43,7 +44,7 @@ export class CoinOracle implements Oracle<Message, SerializedState, CoinMethods>
       const to = args.to
       const amount = args.amount
 
-      if(!this.state[to]) this.state[to] = 0n
+      this.state[to] ??= 0n
       this.state[to] += amount
 
       return true
@@ -72,7 +73,7 @@ export class CoinOracle implements Oracle<Message, SerializedState, CoinMethods>
       if (!await this.keyManager.verify(signature, JSON.stringify({ from, to, amount, time }), from)) return 'Invalid signature'
 
       this.state[from] -= amount
-      if(!this.state[to]) this.state[to] = 0n
+      this.state[to] ??= 0n
       this.state[to] += amount
 
       console.log(`[COIN] Transferred ${amount} from ${from} to ${to}`)

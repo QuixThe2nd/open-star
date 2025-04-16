@@ -5,31 +5,28 @@ import { CoinOracle } from './classes/oracle/Coin';
 import { NameServiceOracle } from "./classes/oracle/NameService";
 import { DemoOracle } from "./classes/oracle/Demo";
 
-
 const keyManager = new KeyManager()
 
 /** CONFIG START */
 const oraclesDefinition = {
   coin: new CoinOracle(keyManager),
   nameService: new NameServiceOracle(keyManager),
-  demo: new DemoOracle()
+  demo: new DemoOracle(),
 }
 /** CONFIG END */
 
 export type MethodToTuple<Methods extends object> = { [MethodName in keyof Methods]: Methods[MethodName] extends (_args: infer Args) => unknown ? [MethodName, Args] : never }[keyof Methods]
-type Oracles = typeof oraclesDefinition[keyof typeof oraclesDefinition]
-type OracleNames = keyof typeof oraclesDefinition;
 type MessageType<OracleName extends string, OracleMethods extends object, SerializedState extends object> = [OracleName, 'call', ...MethodToTuple<OracleMethods>] | [OracleName, 'state', SerializedState] | ['ping' | 'pong'];
-export type Message = MessageType<OracleNames, Methods, Oracles extends { getState(): infer R } ? R : never>
+export type Message = MessageType<keyof typeof oraclesDefinition, Methods, typeof oraclesDefinition[keyof typeof oraclesDefinition] extends { getState(): infer R } ? R : never>
 export type Methods = { [key: string]: (_args: any ) => Promise<true | string> | true | string }
 export type PeerStates<State> = { [from: `0x${string}`]: { lastSend: State; lastReceive: State; reputation: number | null } }
 
-export interface Oracle<Message, State extends object, OracleMethods extends Methods> {
-  name: string
+export interface Oracle<Message extends unknown[], State extends object, OracleMethods extends Methods> {
   getState: () => State
   onEpoch: (_signalling: Signalling<Message>, _epochTime: number) => void
   onCall: <T extends keyof Methods & string>(_method: T, _args: Parameters<OracleMethods[T]>[0], _signalling: Signalling<Message>) => Promise<void> | void
   onConnect: (_signalling: Signalling<Message>) => Promise<void> | void
+  boilerplateState: State
   peerStates: PeerStates<State>
 }
 
@@ -38,7 +35,7 @@ export const mode = <State>(arr: State[]): State | undefined => arr.toSorted((a,
 export function sortObjectByKeys<T extends object>(obj: T): T {
   const sortedObj = {} as T;
   for (const key of (Object.keys(obj) as (keyof T)[]).toSorted((a, b) => (a as string).localeCompare(b as string))) {
-    sortedObj[key] = obj[key];
+    sortedObj[key] = typeof obj[key] === 'object' ? sortObjectByKeys(obj[key] as T[keyof T] & object) : obj[key];
   }
   return sortedObj;
 }
@@ -78,18 +75,19 @@ class OpenStar {
         return
       }
       if (message[1] === 'state') {
-        if(!oracle.peerStates[from]) oracle.peerStates[from] = { lastReceive: {}, lastSend: {}, reputation: 0 }
-        oracle.peerStates[from].lastReceive = message[2]
+        // @ts-expect-error: TS linter is stupid
+        oracle.peerStates[from] ??= { lastReceive: oracle.boilerplateState, lastSend: oracle.boilerplateState, reputation: 0 }
+        oracle.peerStates[from]!.lastReceive = message[2]
 
         const state = oracle.getState()
-        if (JSON.stringify(state) !== JSON.stringify(oracle.peerStates[from].lastSend)) {
-          oracle.peerStates[from].lastSend = state
+        if (JSON.stringify(state) !== JSON.stringify(oracle.peerStates[from]!.lastSend)) {
+          oracle.peerStates[from]!.lastSend = state
           callback([ message[0], 'state', state ])
         }
 
-        if (oracle.peerStates[from].reputation === null) oracle.peerStates[from].reputation = 0
-        if (JSON.stringify(oracle.peerStates[from].lastSend) === JSON.stringify(oracle.peerStates[from].lastReceive)) oracle.peerStates[from].reputation++ // TODO: stake weighted voting
-        else if (this.epochCount <= 0) oracle.peerStates[from].reputation--
+        oracle.peerStates[from]!.reputation ??= 0
+        if (JSON.stringify(oracle.peerStates[from]!.lastSend) === JSON.stringify(oracle.peerStates[from]!.lastReceive)) oracle.peerStates[from]!.reputation++ // TODO: stake weighted voting
+        else if (this.epochCount <= 0) oracle.peerStates[from]!.reputation--
       } else if (message[1] === 'call') {
         Promise.resolve(oracle.onCall(message[2], message[3], this.signalling)).catch(console.error)
       }
@@ -106,7 +104,7 @@ class OpenStar {
   }
 }
 
-const oracleEntries = Object.entries(oraclesDefinition) as [OracleNames, typeof oraclesDefinition[OracleNames]][]
-const oracles = new Map<OracleNames, Oracles>(oracleEntries)
+const oracleEntries = Object.entries(oraclesDefinition) as [keyof typeof oraclesDefinition, typeof oraclesDefinition[keyof typeof oraclesDefinition]][]
+const oracles = new Map<keyof typeof oraclesDefinition, typeof oraclesDefinition[keyof typeof oraclesDefinition]>(oracleEntries)
 const openStar = new OpenStar(keyManager, oracles)
 console.log('[OPENSTAR]', openStar)

@@ -13,6 +13,7 @@ export class DemoOracle implements Oracle<Message, State, DemoMethods> {
   private state: State = { value: 0 }
   public readonly peerStates: PeerStates<State> = {}
   private mempool: Parameters<DemoMethods['add' | 'subtract']>[0][] = []
+  public readonly boilerplateState: State = { value: 0 }
 
   getState = (): State => this.state;
 
