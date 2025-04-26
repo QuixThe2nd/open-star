@@ -1,6 +1,6 @@
 import WebSocket from 'ws'
 import Peer, { type Instance as PeerInstance } from 'simple-peer'
-import wrtc from '@roamhq/wrtc'
+import WebRTC from '@roamhq/wrtc'
 import type { Hex } from 'viem';
 import type { KeyManager } from './KeyManager';
 
@@ -42,9 +42,8 @@ export class Signalling<Message> {
 
   private readonly createPeer = (from: Hex, initiator: boolean): Peer.Instance => {
     if (this.peers.has(from)) return this.peers.get(from)!
-    const peer: PeerInstance = new Peer({ initiator, wrtc })
+    const peer: PeerInstance = new Peer({ initiator, wrtc: WebRTC })
     this.peers.set(from, peer);
-    console.log('created peer')
     
     peer.on('connect', () => {
       if (!this.connected) {
