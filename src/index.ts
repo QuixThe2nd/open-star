@@ -96,4 +96,4 @@ export class OpenStar<OracleName extends string, OracleState extends object, Ora
   }
 }
 
-export { KeyManager }
+export { KeyManager, Signalling }
