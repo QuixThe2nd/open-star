@@ -7,7 +7,7 @@ Open Star is a framework that allows for consensus to be achieved around arbitra
 ## Running
 To run Open Star, execute:
 ```sh
-npx tsx src/index.ts
+npx tsx src/client.ts
 ```
 
 If the script stalls at `Announcing`, run a second node. This happens when no peers are online.
