@@ -3,10 +3,10 @@ import { mode, sortObjectByKeys, type MessageType, type MethodsType, type Oracle
 import type { Signalling } from "../Signalling";
 import type { KeyManager } from "../KeyManager";
 
-type State = { [pubKey: Hex]: { hostnames: `${string}.star`[], balance: bigint } }
+type State = { [pubKey: Hex]: { hostnames: `${string}.star`[], balance: `0x${string}` } }
 interface NameServiceMethods extends MethodsType {
-  mint: (_args: { to: Hex, amount: bigint }) => true | string;
-  burn: (_args: { to: Hex, amount: bigint }) => true | string;
+  mint: (_args: { to: Hex, amount: `0x${string}` }) => true | string;
+  burn: (_args: { to: Hex, amount: `0x${string}` }) => true | string;
   register: (_args: { from: Hex, hostname: `${string}.star`, signature: Hex }) => Promise<true | string>;
 }
 
@@ -29,8 +29,8 @@ export class NameServiceOracle implements OracleType<'nameService', Message, Sta
       const to = args.to
       const amount = args.amount
 
-      this.state[to] ??= { hostnames: [], balance: 0n }
-      this.state[to].balance += amount
+      this.state[to] ??= { hostnames: [], balance: `0x0` }
+      this.state[to].balance = `0x${(BigInt(this.state[to].balance) + BigInt(amount)).toString(16)}`
 
       return true
     },
@@ -39,8 +39,8 @@ export class NameServiceOracle implements OracleType<'nameService', Message, Sta
       const amount = args.amount
 
       if (!this.state[to]) return 'Address does not exist'
-      if (this.state[to].balance < amount) this.state[to].balance = 0n
-      else this.state[to].balance -= amount
+      if (this.state[to].balance < amount) this.state[to].balance = `0x0`
+      else this.state[to].balance = `0x${(BigInt(this.state[to].balance) - BigInt(amount)).toString(16)}`
 
       return true
     },
@@ -50,7 +50,7 @@ export class NameServiceOracle implements OracleType<'nameService', Message, Sta
       const signature = args.signature
 
       if (!this.state[from]) return 'No balance'
-      if (this.state[from].balance < parseEther('1')) return 'Balance too low'
+      if (BigInt(this.state[from].balance) < parseEther('1')) return 'Balance too low'
       if (!await this.keyManager.verify(signature, JSON.stringify({ from, hostname }), from)) return 'Invalid signature'
 
       for (const pubKey in this.state) {
@@ -58,7 +58,7 @@ export class NameServiceOracle implements OracleType<'nameService', Message, Sta
         if (hostnames?.includes(hostname)) return 'Hostname taken'
       }
 
-      this.state[from].balance -= parseEther('0.1')
+      this.state[from].balance = `0x${(BigInt(this.state[from].balance) - parseEther('0.1')).toString(16)}`
       this.state[from].hostnames.push(hostname)
 
       console.log(`[NAMESERVICE] Registered ${hostname} to ${from}`)
@@ -71,11 +71,11 @@ export class NameServiceOracle implements OracleType<'nameService', Message, Sta
     const state = this.state
     let supply = 0n
     Object.keys(state).forEach(peer => {
-      supply += state[peer as keyof PeerStates<State>]!.balance
+      supply += BigInt(state[peer as keyof PeerStates<State>]!.balance)
     })
     let coinsStaked = 0n
     Object.keys(this.peerStates).forEach(peer => {
-      coinsStaked += state[peer as keyof PeerStates<State>]?.balance ?? 0n
+      coinsStaked += BigInt(state[peer as keyof PeerStates<State>]?.balance ?? `0x0`)
     })
 
     const stakingRate = coinsStaked === 0n || supply === 0n ? 1 : Number(coinsStaked) / Number(supply)
@@ -106,18 +106,17 @@ export class NameServiceOracle implements OracleType<'nameService', Message, Sta
       netReputation += state.reputation;
       if (state.reputation > 0) {
         console.log('[NAMESERVICE] Rewarding', peer.slice(0, 8) + '...')
-        this.call('mint', { to: peer, amount: myState[peer]?.balance ? BigInt(Math.floor(Number(myState[peer].balance)*blockYield)) : parseEther('1') })
+        this.call('mint', { to: peer, amount: `0x${(myState[peer]?.balance ? BigInt(Math.floor(Number(myState[peer].balance)*blockYield)) : parseEther('1')).toString(16)}` })
       } else if (state.reputation < 0 && myState[peer]) {
         console.log('[NAMESERVICE] Slashing', peer.slice(0, 8) + '...')
-        this.call('burn', { to: peer, amount: (myState[peer].balance*9n)/10n })
+        this.call('burn', { to: peer, amount: `0x${((BigInt(myState[peer].balance)*9n)/10n).toString(16)}` })
       }
       state.reputation = null
     }
     if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
-    this.call('mint', { to: signalling.address, amount: myState[signalling.address]?.balance ? BigInt(Math.floor(Number(myState[signalling.address]?.balance)*blockYield)) : parseEther('1') })
+    this.call('mint', { to: signalling.address, amount: `0x${(myState[signalling.address]?.balance ? BigInt(Math.floor(Number(myState[signalling.address]?.balance)*blockYield)) : parseEther('1')).toString(16)}` })
     
     this.mempool = []
-    console.log('[NAMESERVICE]', this.getState())
   };
   call<T extends keyof NameServiceMethods>(method: T, args: Parameters<NameServiceMethods[T]>[0]): ReturnType<NameServiceMethods[T]> {
     // @ts-expect-error: The TS linter is stupid

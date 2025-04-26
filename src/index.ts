@@ -38,11 +38,11 @@ export class OpenStar<OracleName extends string, OracleState extends object, Ora
 
   constructor(keyManager: KeyManager, oracle: Oracle) {
     this.oracle = oracle
-    this.signalling = new Signalling<PingPongMessage | MessageType<OracleName, OracleMethods, OracleState>>(this.onMessage, this.onConnect, keyManager)
+    this.signalling = new Signalling<PingPongMessage | MessageType<OracleName, OracleMethods, OracleState>>(oracle.name, this.onMessage, this.onConnect, keyManager)
   }
 
   private readonly onConnect = async (): Promise<void> => {
-    console.log('[OPENSTAR] Connected')
+    console.log(`[${this.oracle.name.toUpperCase()}] Connected`)
     await this.oracle.onConnect(this.signalling)
 
     const startTime = +new Date();
@@ -55,12 +55,8 @@ export class OpenStar<OracleName extends string, OracleState extends object, Ora
     console.log(`[${message[0].toUpperCase()}] Received message: ${message[1]} from ${from.slice(0, 8)}...`)
     if (message[0] === 'ping') callback(['pong']);
     else if (message[0] === 'pong') console.log('pong')
-    else if (message[0] !== this.oracle.name) {
+    else if (message[0] === this.oracle.name) {
       const oracle = this.oracle
-      if (!oracle) {
-        console.error('Unknown Oracle')
-        return
-      }
       if (message[1] === 'state') {
         oracle.peerStates[from] ??= { lastReceive: oracle.boilerplateState, lastSend: oracle.boilerplateState, reputation: 0 }
         oracle.peerStates[from].lastReceive = message[2]
@@ -83,12 +79,11 @@ export class OpenStar<OracleName extends string, OracleState extends object, Ora
   }
 
   private readonly epoch = (): void => {
-    console.log('[OPENSTAR] Epoch:', new Date().toISOString());
+    console.log(`[${this.oracle.name.toUpperCase()}] Epoch:`, new Date().toISOString());
     this.epochCount++
     this.oracle.onEpoch(this.signalling, this.epochTime)
-    
-    // Create a properly typed state message for the epoch
-    const stateMessage: [OracleName, 'state', OracleState] = [this.oracle.name, 'state', this.oracle.getState()];
-    this.signalling.sendMessage(stateMessage).catch(console.error)
+    console.log(`[${this.oracle.name.toUpperCase()}]`, this.oracle.getState())
+
+    this.signalling.sendMessage([this.oracle.name, 'state', this.oracle.getState()]).catch(console.error)
   }
 }

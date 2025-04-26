@@ -29,7 +29,7 @@ export class CoinOracle implements OracleType<'coin', Message, State, CoinMethod
       const amount = args.amount
 
       this.state[to] ??= `0x0`
-      this.state[to] += amount
+      this.state[to] = `0x${(BigInt(this.state[to]) + BigInt(amount)).toString(16)}`
 
       return true
     },
@@ -104,7 +104,7 @@ export class CoinOracle implements OracleType<'coin', Message, State, CoinMethod
       netReputation += state.reputation;
       if (state.reputation > 0) {
         console.log('[COIN] Rewarding', peer.slice(0, 8) + '...')
-        this.call('mint', { to: peer, amount: `0x(myState[peer] ? BigInt(Math.floor(Number(myState[peer])*blockYield)) : parseEther('1')).toString(16)` })
+        this.call('mint', { to: peer, amount: `0x${(myState[peer] ? BigInt(Math.floor(Number(myState[peer])*blockYield)).toString(16) : parseEther('1')).toString(16)}` })
       } else if (state.reputation < 0 && myState[peer]) {
         console.log('[COIN] Slashing', peer.slice(0, 8) + '...')
         this.call('burn', { to: peer, amount: `0x${((BigInt(myState[peer])*9n)/10n).toString(16)}` })
@@ -112,10 +112,9 @@ export class CoinOracle implements OracleType<'coin', Message, State, CoinMethod
       state.reputation = null
     }
     if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
-    this.call('mint', { to: signalling.address, amount: `0x${(myState[signalling.address] ? BigInt(Math.floor(Number(myState[signalling.address])*blockYield)) : parseEther('1')).toString(16)}` })
+    this.call('mint', { to: signalling.address, amount: `0x${(myState[signalling.address] ? BigInt(Math.floor(Number(myState[signalling.address])*blockYield)).toString(16) : parseEther('1')).toString(16)}` })
     
     this.mempool = []
-    console.log('[COIN]', this.getState())
   }
 
   call<T extends keyof CoinMethods>(method: T, args: Parameters<CoinMethods[T]>[0]): ReturnType<CoinMethods[T]> {

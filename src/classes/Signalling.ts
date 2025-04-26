@@ -17,14 +17,14 @@ export class Signalling<Message> {
   private connected = false
   private readonly keyManager: KeyManager
 
-  constructor(onMessage: (_data: Message, _from: Hex, _callback: (_message: Message) => void) => void, onConnect: () => Promise<void>, keyManager: KeyManager) {
+  constructor(oracleName: string, onMessage: (_data: Message, _from: Hex, _callback: (_message: Message) => void) => void, onConnect: () => Promise<void>, keyManager: KeyManager) {
     this.onMessage = onMessage
     this.onConnect = onConnect
     this.keyManager = keyManager
 
     console.log('Connecting...')
 
-    this.ws = new WebSocket('wss://rooms.deno.dev/openstar-devnet');
+    this.ws = new WebSocket(`wss://rooms.deno.dev/openstar-${oracleName}`);
     this.ws.on('open', this.announce);
     this.ws.on('message', this.onWsMessage);
   }
@@ -46,10 +46,7 @@ export class Signalling<Message> {
     this.peers.set(from, peer);
     
     peer.on('connect', () => {
-      if (!this.connected) {
-        this.onConnect().catch(console.error)
-        this.connected = true
-      }
+      this.onConnect().catch(console.error)
     });
     peer.on('data', (data: string): void => {
       const { signature, message } = JSON.parse(data) as { signature: Hex, message: Message }
