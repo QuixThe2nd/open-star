@@ -16,7 +16,7 @@ If the script stalls at `Announcing`, run a second node. This happens when no pe
 Open Star can be imported using `npm install QuixThe2nd/open-star` and used like `src/client.ts` to import and run oracles.
 
 ### Usage
-To use it, first import Open Star and your Oracle:
+To use it, first import Open Star and your oracle:
 ```ts
 import { OpenStar } from "QuixThe2nd/open-star";
 import { DemoOracle } from "QuixThe2nd/open-star/classes/oracle/Demo";
@@ -28,7 +28,7 @@ const demo = new DemoOracle()
 new OpenStar<'demo', ReturnType<typeof demo.getState>, typeof demo.methods, typeof demo>(demo)
 ```
 
-Open Star will then run your Oracle.
+Open Star will then run your oracle.
 
 ## Creating an Oracle
 To create an oracle, create a file at `./src/classes/oracle/Demo.ts`, then define the type your state follows:
