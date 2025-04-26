@@ -3,7 +3,6 @@ import { CoinOracle } from './classes/oracle/Coin';
 import { NameServiceOracle } from "./classes/oracle/NameService";
 import { DemoOracle } from "./classes/oracle/Demo";
 import { KeyManager } from "./classes/KeyManager";
-import { TheRadicalPartyOracle } from "./classes/oracle/TheRadicalParty";
 
 const keyManager = new KeyManager()
 
@@ -16,5 +15,3 @@ new OpenStar<'nameService', ReturnType<typeof nameService.getState>, typeof name
 const demo = new DemoOracle()
 new OpenStar<'demo', ReturnType<typeof demo.getState>, typeof demo.methods, typeof demo>(keyManager, demo)
 
-const theRadicalParty = new TheRadicalPartyOracle()
-new OpenStar<'theRadicalParty', ReturnType<typeof theRadicalParty.getState>, typeof theRadicalParty.methods, typeof theRadicalParty>(keyManager, theRadicalParty)
