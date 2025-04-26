@@ -1,4 +1,4 @@
-import WebSocket from 'ws'
+import WebSocket, { type RawData } from 'ws'
 import Peer, { type Instance as PeerInstance } from 'simple-peer'
 import WebRTC from '@roamhq/wrtc'
 import type { Hex } from 'viem';
@@ -14,7 +14,6 @@ export class Signalling<Message> {
   private readonly peers = new Map<string, PeerInstance>();
   private readonly onMessage: (_data: Message, _from: Hex, _callback: (_message: Message) => void) => void
   private readonly onConnect: () => Promise<void>
-  private connected = false
   private readonly keyManager: KeyManager
 
   constructor(oracleName: string, onMessage: (_data: Message, _from: Hex, _callback: (_message: Message) => void) => void, onConnect: () => Promise<void>, keyManager: KeyManager) {
@@ -24,13 +23,14 @@ export class Signalling<Message> {
 
     console.log('Connecting...')
 
+    console.log(`wss://rooms.deno.dev/openstar-${oracleName}`)
     this.ws = new WebSocket(`wss://rooms.deno.dev/openstar-${oracleName}`);
-    this.ws.on('open', this.announce);
-    this.ws.on('message', this.onWsMessage);
+    this.ws.on('message', (data) => this.onWsMessage(data));
+    this.ws.on('open', () => this.announce());
   }
 
-  private readonly onWsMessage = (data: string): void => {
-    const message = JSON.parse(data) as SignallingMessage;
+  private readonly onWsMessage = (data: RawData): void => {
+    const message = JSON.parse(data as unknown as string) as SignallingMessage;
 
     if (message.from === this.keyManager.getPublicKey()) return;
     else if (message.type === 'announce' && message.from !== this.keyManager.getPublicKey()) this.initialize(message)
@@ -41,13 +41,19 @@ export class Signalling<Message> {
   private readonly send = (message: SignallingMessage): void => this.ws.send(JSON.stringify(message))
 
   private readonly createPeer = (from: Hex, initiator: boolean): Peer.Instance => {
-    if (this.peers.has(from)) return this.peers.get(from)!
+    if (this.peers.has(from)) this.peers.delete(from)
     const peer: PeerInstance = new Peer({ initiator, wrtc: WebRTC })
     this.peers.set(from, peer);
-    
+
     peer.on('connect', () => {
       this.onConnect().catch(console.error)
     });
+    peer.on('error', (e) => {
+      console.log(`Connection error - ${from}`, e)
+      this.peers.delete(from)
+    });
+    peer.on('close', () => this.peers.delete(from));
+    peer.on('signal', (data: object) => this.send({ type: initiator ? 'initialize' : 'finalize', to: from, from: this.keyManager.getPublicKey(), data: data }));
     peer.on('data', (data: string): void => {
       const { signature, message } = JSON.parse(data) as { signature: Hex, message: Message }
       this.keyManager.verify(signature, JSON.stringify(message), from).then(async status => {
@@ -58,9 +64,6 @@ export class Signalling<Message> {
         }
       }).catch(console.error)
     });
-    peer.on('error', () => this.peers.delete(from));
-    peer.on('close', () => this.peers.delete(from));
-    peer.on('signal', (data: object) => this.send({ type: initiator ? 'initialize' : 'finalize', to: from, from: this.keyManager.getPublicKey(), data: data }));
 
     return peer;
   }

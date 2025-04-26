@@ -2,15 +2,14 @@ import type { Hex } from "viem";
 import { KeyManager } from "./classes/KeyManager";
 import { Signalling } from "./classes/Signalling";
 
-// export type MethodToTuple<Methods extends object> = { [MethodName in keyof Methods]: Methods[MethodName] extends (_args: infer Args) => unknown ? [MethodName, Args] : never }[keyof Methods]
 export type MessageType<OracleName extends string, OracleMethods extends MethodsType, SerializedState, K extends keyof OracleMethods = keyof OracleMethods> = PingPongMessage | [OracleName, 'call', K, Parameters<OracleMethods[K]>[0]] | [OracleName, 'state', SerializedState];
 export type MethodsType = { [key: string]: (_args: any ) => Promise<true | string> | true | string }
-export type PeerStates<State> = { [from: `0x${string}`]: { lastSend: State; lastReceive: State; reputation: number | null } }
+export type PeerStates<State> = { [from: `0x${string}`]: { lastSend: null | State; lastReceive: State; reputation: number | null } }
 
 export interface OracleType<OracleName extends string, OracleMessage extends unknown[], OracleState extends object, OracleMethods extends MethodsType> {
   getState: () => OracleState
-  onEpoch: (_signalling: Signalling<OracleMessage>, _epochTime: number) => void
-  onCall: <T extends keyof OracleMethods>(_method: T, _args: Parameters<OracleMethods[T]>[0], _signalling: Signalling<OracleMessage>) => Promise<void> | void
+  onEpoch: (_signalling: Signalling<OracleMessage>, _epochTime: number) => Promise<void> | void
+  call: <T extends keyof OracleMethods>(_method: T, _args: Parameters<OracleMethods[T]>[0], _signalling: Signalling<OracleMessage>) => Promise<void> | void
   onConnect: (_signalling: Signalling<OracleMessage>) => Promise<void> | void
   boilerplateState: OracleState
   peerStates: PeerStates<OracleState>
@@ -32,23 +31,31 @@ export type PingPongMessage = ['ping' | 'pong'];
 
 export class OpenStar<OracleName extends string, OracleState extends object, OracleMethods extends MethodsType, Oracle extends OracleType<OracleName, MessageType<OracleName, OracleMethods, OracleState>, OracleState, OracleMethods>> {
   private readonly oracle: Oracle;
-  private readonly signalling: Signalling<PingPongMessage | MessageType<OracleName, OracleMethods, OracleState>>
+  public readonly signalling: Signalling<PingPongMessage | MessageType<OracleName, OracleMethods, OracleState>>
   private readonly epochTime = 5_000
   private epochCount = -1
+  readonly keyManager: KeyManager
+  connected = false
 
-  constructor(keyManager: KeyManager, oracle: Oracle) {
+  constructor(oracle: Oracle, keyManager?: KeyManager) {
+    this.keyManager = keyManager ?? new KeyManager()
     this.oracle = oracle
-    this.signalling = new Signalling<PingPongMessage | MessageType<OracleName, OracleMethods, OracleState>>(oracle.name, this.onMessage, this.onConnect, keyManager)
+    this.signalling = new Signalling<PingPongMessage | MessageType<OracleName, OracleMethods, OracleState>>(oracle.name, this.onMessage, this.onConnect, this.keyManager)
   }
 
   private readonly onConnect = async (): Promise<void> => {
-    console.log(`[${this.oracle.name.toUpperCase()}] Connected`)
-    await this.oracle.onConnect(this.signalling)
+    if (!this.connected) {
+      this.connected = true
+      console.log(`[${this.oracle.name.toUpperCase()}] Connected`)
+      await this.oracle.onConnect(this.signalling)
 
-    const startTime = +new Date();
-    await new Promise((res) => setTimeout(res, (Math.floor(startTime / this.epochTime) + 1) * this.epochTime - startTime))
-    this.epoch();
-    setInterval(this.epoch, this.epochTime);
+      const startTime = +new Date();
+      await new Promise((res) => setTimeout(res, (Math.floor(startTime / this.epochTime) + 1) * this.epochTime - startTime))
+      await this.epoch();
+      setInterval(() => {
+        this.epoch().catch(console.error)
+      }, this.epochTime);
+    }
   }
 
   private readonly onMessage = (message: PingPongMessage | MessageType<OracleName, OracleMethods, OracleState>, from: Hex, callback: (_message: PingPongMessage | MessageType<OracleName, OracleMethods, OracleState>) => void): void => {
@@ -58,30 +65,31 @@ export class OpenStar<OracleName extends string, OracleState extends object, Ora
     else if (message[0] === this.oracle.name) {
       const oracle = this.oracle
       if (message[1] === 'state') {
-        oracle.peerStates[from] ??= { lastReceive: oracle.boilerplateState, lastSend: oracle.boilerplateState, reputation: 0 }
+        oracle.peerStates[from] ??= { lastReceive: oracle.boilerplateState, lastSend: null, reputation: 0 }
         oracle.peerStates[from].lastReceive = message[2]
 
         const state = oracle.getState()
         if (JSON.stringify(state) !== JSON.stringify(oracle.peerStates[from].lastSend)) {
           oracle.peerStates[from].lastSend = state
-          // Create a properly typed state message
           const stateMessage: [typeof message[0], 'state', typeof state] = [message[0], 'state', state];
           callback(stateMessage);
         }
 
         oracle.peerStates[from].reputation ??= 0
         if (JSON.stringify(oracle.peerStates[from].lastSend) === JSON.stringify(oracle.peerStates[from].lastReceive)) oracle.peerStates[from].reputation++
-        else if (this.epochCount <= 0) oracle.peerStates[from].reputation--
+        else if (this.epochCount <= 0) {
+          if (Object.keys(oracle.peerStates[from].lastSend ?? '{}').length !== 0) oracle.peerStates[from].reputation--
+        }
       } else if (message[1] === 'call') {
-        Promise.resolve(oracle.onCall(message[2], message[3], this.signalling)).catch(console.error)
+        Promise.resolve(oracle.call(message[2], message[3], this.signalling)).catch(console.error)
       }
     }
   }
 
-  private readonly epoch = (): void => {
+  private readonly epoch = async (): Promise<void> => {
     console.log(`[${this.oracle.name.toUpperCase()}] Epoch:`, new Date().toISOString());
     this.epochCount++
-    this.oracle.onEpoch(this.signalling, this.epochTime)
+    await this.oracle.onEpoch(this.signalling, this.epochTime)
     console.log(`[${this.oracle.name.toUpperCase()}]`, this.oracle.getState())
 
     this.signalling.sendMessage([this.oracle.name, 'state', this.oracle.getState()]).catch(console.error)

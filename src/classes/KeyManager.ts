@@ -5,11 +5,16 @@ import type { Hex } from 'viem';
 import { wordlist } from '@scure/bip39/wordlists/english';
 
 export class KeyManager {
-  private readonly keyFile = `keyPair_${Math.random()/* > 0.5 ? 1 : 2*/}.json`;
   private mnemonic!: string;
   private account!: ReturnType<typeof mnemonicToAccount>;
+  readonly id: string
 
-  constructor() {
+  get keyFile(): string {
+    return `keyPair_${this.id}.json`;
+  }
+
+  constructor(id = '') {
+    this.id = id
     if (fs.existsSync(this.keyFile)) {
       const file = fs.readFileSync(this.keyFile, 'utf-8');
       const { mnemonic } = JSON.parse(file) as { mnemonic: string };

@@ -106,30 +106,30 @@ export class NameServiceOracle implements OracleType<'nameService', Message, Sta
       netReputation += state.reputation;
       if (state.reputation > 0) {
         console.log('[NAMESERVICE] Rewarding', peer.slice(0, 8) + '...')
-        this.call('mint', { to: peer, amount: `0x${(myState[peer]?.balance ? BigInt(Math.floor(Number(myState[peer].balance)*blockYield)) : parseEther('1')).toString(16)}` })
+        this.onCall('mint', { to: peer, amount: `0x${(myState[peer]?.balance ? BigInt(Math.floor(Number(myState[peer].balance)*blockYield)) : parseEther('1')).toString(16)}` })
       } else if (state.reputation < 0 && myState[peer]) {
         console.log('[NAMESERVICE] Slashing', peer.slice(0, 8) + '...')
-        this.call('burn', { to: peer, amount: `0x${((BigInt(myState[peer].balance)*9n)/10n).toString(16)}` })
+        this.onCall('burn', { to: peer, amount: `0x${((BigInt(myState[peer].balance)*9n)/10n).toString(16)}` })
       }
       state.reputation = null
     }
     if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
-    this.call('mint', { to: signalling.address, amount: `0x${(myState[signalling.address]?.balance ? BigInt(Math.floor(Number(myState[signalling.address]?.balance)*blockYield)) : parseEther('1')).toString(16)}` })
+    this.onCall('mint', { to: signalling.address, amount: `0x${(myState[signalling.address]?.balance ? BigInt(Math.floor(Number(myState[signalling.address]?.balance)*blockYield)) : parseEther('1')).toString(16)}` })
     
     this.mempool = []
   };
-  call<T extends keyof NameServiceMethods>(method: T, args: Parameters<NameServiceMethods[T]>[0]): ReturnType<NameServiceMethods[T]> {
+  private onCall<T extends keyof NameServiceMethods>(method: T, args: Parameters<NameServiceMethods[T]>[0]): ReturnType<NameServiceMethods[T]> {
     // @ts-expect-error: The TS linter is stupid
     return this.methods[method](args);
   }
 
-  onCall<T extends keyof NameServiceMethods>(method: T, _args: Parameters<NameServiceMethods[T]>[0], signalling: Signalling<Message>): void {
+  call<T extends keyof NameServiceMethods>(method: T, _args: Parameters<NameServiceMethods[T]>[0], signalling: Signalling<Message>): void {
     if (method === 'register') {
       const args = _args as Parameters<NameServiceMethods['register']>[0]
       if (!this.mempool.some(tx => tx.signature === args.signature)) {
         this.mempool.push(args)
         signalling.sendMessage([ 'nameService', 'call', method, args ]).catch(console.error)
-        this.call('register', args).catch(console.error)
+        this.onCall('register', args).catch(console.error)
       }
     }
   }

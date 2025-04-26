@@ -66,11 +66,7 @@ export class CoinOracle implements OracleType<'coin', Message, State, CoinMethod
   }
 
   getState(): State {
-    const obj: State = {}
-    Object.entries(this.state).forEach(([key, value]) => {
-      obj[key] = value
-    })
-    return sortObjectByKeys(obj)
+    return sortObjectByKeys(this.state)
   }
 
   blockYield(epochTime: number): number {
@@ -104,31 +100,31 @@ export class CoinOracle implements OracleType<'coin', Message, State, CoinMethod
       netReputation += state.reputation;
       if (state.reputation > 0) {
         console.log('[COIN] Rewarding', peer.slice(0, 8) + '...')
-        this.call('mint', { to: peer, amount: `0x${(myState[peer] ? BigInt(Math.floor(Number(myState[peer])*blockYield)).toString(16) : parseEther('1')).toString(16)}` })
+        this.onCall('mint', { to: peer, amount: `0x${(myState[peer] ? BigInt(Math.floor(Number(myState[peer])*blockYield)).toString(16) : parseEther('1')).toString(16)}` })
       } else if (state.reputation < 0 && myState[peer]) {
         console.log('[COIN] Slashing', peer.slice(0, 8) + '...')
-        this.call('burn', { to: peer, amount: `0x${((BigInt(myState[peer])*9n)/10n).toString(16)}` })
+        this.onCall('burn', { to: peer, amount: `0x${((BigInt(myState[peer])*9n)/10n).toString(16)}` })
       }
       state.reputation = null
     }
     if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
-    this.call('mint', { to: signalling.address, amount: `0x${(myState[signalling.address] ? BigInt(Math.floor(Number(myState[signalling.address])*blockYield)).toString(16) : parseEther('1')).toString(16)}` })
+    this.onCall('mint', { to: signalling.address, amount: `0x${(myState[signalling.address] ? BigInt(Math.floor(Number(myState[signalling.address])*blockYield)).toString(16) : parseEther('1')).toString(16)}` })
     
     this.mempool = []
   }
 
-  call<T extends keyof CoinMethods>(method: T, args: Parameters<CoinMethods[T]>[0]): ReturnType<CoinMethods[T]> {
+  private onCall<T extends keyof CoinMethods>(method: T, args: Parameters<CoinMethods[T]>[0]): ReturnType<CoinMethods[T]> {
     // @ts-expect-error: The TS linter is stupid
     return this.methods[method](args);
   }
 
-  onCall<T extends keyof CoinMethods>(method: T, _args: Parameters<CoinMethods[T]>[0], signalling: Signalling<Message>): void {
+  call<T extends keyof CoinMethods>(method: T, _args: Parameters<CoinMethods[T]>[0], signalling: Signalling<Message>): void {
     if (method === 'transfer') {
       const args = _args as Parameters<CoinMethods['transfer']>[0]
       if (!this.mempool.some(tx => tx.signature === args.signature)) {
         this.mempool.push(args)
         signalling.sendMessage([ 'coin', 'call', method, args ]).catch(console.error)
-        this.call('transfer', args).catch(console.error)
+        this.onCall('transfer', args).catch(console.error)
       }
     }
   }
