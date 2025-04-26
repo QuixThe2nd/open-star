@@ -103,7 +103,7 @@ readonly methods: DemoMethods = {
   }
 }
 
-call<T extends keyof DemoMethods>(method: T, args: Parameters<DemoMethods[T]>[0]): ReturnType<DemoMethods[T]> {
+private onCall<T extends keyof DemoMethods>(method: T, args: Parameters<DemoMethods[T]>[0]): ReturnType<DemoMethods[T]> {
   // @ts-expect-error: The TS linter is stupid
   return this.methods[method](args);
 }
@@ -113,11 +113,11 @@ Now you need to define the function that processes calls received from peers as 
 ```ts
 private mempool: Parameters<DemoMethods['add' | 'subtract']>[0][] = []
 
-onCall = async <T extends keyof DemoMethods>(method: T, args: Parameters<DemoMethods[T]>[0], signalling: Signalling<Message>): Promise<void> => {
+call = async <T extends keyof DemoMethods>(method: T, args: Parameters<DemoMethods[T]>[0], signalling: Signalling<Message>): Promise<void> => {
   if (!this.mempool.some(tx => JSON.stringify(tx) === JSON.stringify(args))) { // This should be done via signatures or something similar
     this.mempool.push(args)
     signalling.sendMessage([ this.name, 'call', method, args ]).catch(console.error)
-    await this.call(method, args)
+    await this.onCall(method, args)
   }
 }
 ```
