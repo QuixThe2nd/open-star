@@ -95,3 +95,5 @@ export class OpenStar<OracleName extends string, OracleState extends object, Ora
     this.signalling.sendMessage([this.oracle.name, 'state', this.oracle.getState()]).catch(console.error)
   }
 }
+
+export { KeyManager }
