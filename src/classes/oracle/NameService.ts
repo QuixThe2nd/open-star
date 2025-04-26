@@ -1,51 +1,30 @@
 import { parseEther, type Hex } from "viem";
-import { mode, sortObjectByKeys, type Message, type Methods, type Oracle, type PeerStates } from "../..";
+import { mode, sortObjectByKeys, type MessageType, type MethodsType, type OracleType, type PeerStates, type PingPongMessage } from "../..";
 import type { Signalling } from "../Signalling";
 import type { KeyManager } from "../KeyManager";
 
 type State = { [pubKey: Hex]: { hostnames: `${string}.star`[], balance: bigint } }
-type SerializedState = { [pubKey: Hex]: { hostnames: `${string}.star`[], balance: Hex } }
-interface NameServiceMethods extends Methods {
+interface NameServiceMethods extends MethodsType {
   mint: (_args: { to: Hex, amount: bigint }) => true | string;
   burn: (_args: { to: Hex, amount: bigint }) => true | string;
   register: (_args: { from: Hex, hostname: `${string}.star`, signature: Hex }) => Promise<true | string>;
 }
 
-function serialize(state: State): SerializedState {
-  const serializedObj: SerializedState = {}
-  Object.entries(state).forEach(([key, value]) => {
-    serializedObj[key as keyof State] = {
-      hostnames: value.hostnames,
-      balance: `0x${value.balance.toString(16)}`
-    }
-  })
-  return serializedObj
-}
+type Message = MessageType<'nameService', NameServiceMethods, State>
 
-function deserialize(state: SerializedState): State {
-  const serializedObj: State = {}
-  Object.entries(state).forEach(([key, value]) => {
-    serializedObj[key as keyof State] = {
-      hostnames: value.hostnames,
-      balance: BigInt(value.balance)
-    }
-  })
-  return serializedObj
-}
-
-export class NameServiceOracle implements Oracle<Message, SerializedState, NameServiceMethods> {
+export class NameServiceOracle implements OracleType<'nameService', Message, State, NameServiceMethods> {
   public readonly name = "nameService";
   private state: State = {}
-  public readonly peerStates: PeerStates<SerializedState> = {};
+  public readonly peerStates: PeerStates<State> = {};
   private readonly keyManager: KeyManager
   private mempool: Parameters<NameServiceMethods['register']>[0][] = []
-  public readonly boilerplateState: SerializedState = {}
+  public readonly boilerplateState: State = {}
 
   constructor (keyManager: KeyManager) {
     this.keyManager = keyManager
   }
 
-  private readonly methods: NameServiceMethods = {
+  readonly methods: NameServiceMethods = {
     mint: (args: Parameters<NameServiceMethods['mint']>[0]): ReturnType<NameServiceMethods['mint']> => {
       const to = args.to
       const amount = args.amount
@@ -92,11 +71,11 @@ export class NameServiceOracle implements Oracle<Message, SerializedState, NameS
     const state = this.state
     let supply = 0n
     Object.keys(state).forEach(peer => {
-      supply += state[peer as keyof PeerStates<SerializedState>]!.balance
+      supply += state[peer as keyof PeerStates<State>]!.balance
     })
     let coinsStaked = 0n
     Object.keys(this.peerStates).forEach(peer => {
-      coinsStaked += state[peer as keyof PeerStates<SerializedState>]?.balance ?? 0n
+      coinsStaked += state[peer as keyof PeerStates<State>]?.balance ?? 0n
     })
 
     const stakingRate = coinsStaked === 0n || supply === 0n ? 1 : Number(coinsStaked) / Number(supply)
@@ -104,21 +83,21 @@ export class NameServiceOracle implements Oracle<Message, SerializedState, NameS
     return Math.pow(stakingYield, 1 / ((365 * 24 * 60 * 60 * 1000) / epochTime)) - 1;
   }
 
-  public getState = (): SerializedState => {
+  public getState = (): State => {
     const obj: State = {}
     Object.entries(this.state).forEach(([key, value]) => {
       obj[key as keyof State] = value
     })
-    return serialize(sortObjectByKeys(obj))
+    return sortObjectByKeys(obj)
   };
 
-  public onEpoch = (signalling: Signalling<Message>, epochTime: number): void => {
+  public onEpoch = (signalling: Signalling<Message | PingPongMessage>, epochTime: number): void => {
     const myState = this.state
     const blockYield = this.blockYield(epochTime)
 
     let netReputation = 0;
     for (const _peer in this.peerStates) {
-      const peer = _peer as keyof PeerStates<SerializedState>
+      const peer = _peer as keyof PeerStates<State>
       const state = this.peerStates[peer]!
       if (state.reputation === null) {
         delete this.peerStates[peer]
@@ -145,7 +124,7 @@ export class NameServiceOracle implements Oracle<Message, SerializedState, NameS
     return this.methods[method](args);
   }
 
-  onCall<T extends keyof NameServiceMethods & string>(method: T, _args: Parameters<NameServiceMethods[T]>[0], signalling: Signalling<Message>): void {
+  onCall<T extends keyof NameServiceMethods>(method: T, _args: Parameters<NameServiceMethods[T]>[0], signalling: Signalling<Message>): void {
     if (method === 'register') {
       const args = _args as Parameters<NameServiceMethods['register']>[0]
       if (!this.mempool.some(tx => tx.signature === args.signature)) {
@@ -164,7 +143,7 @@ export class NameServiceOracle implements Oracle<Message, SerializedState, NameS
       await new Promise((res) => setTimeout(res, 100))
       mostCommonState = mode(Object.values(this.peerStates).map(state => state.lastReceive))
     }
-    this.state = deserialize(mostCommonState)
+    this.state = mostCommonState
     signalling.sendMessage([ this.name, 'state', mostCommonState ]).catch(console.error)
   }
 }

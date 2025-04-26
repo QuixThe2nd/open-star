@@ -1,14 +1,16 @@
-import { type Methods, type Message, type Oracle, type PeerStates } from '../..';
+import { type MethodsType, type MessageType, type OracleType, type PeerStates } from '../..';
 import type { Signalling } from '../Signalling';
 
 type State = { value: number }
 
-interface DemoMethods extends Methods {
+interface DemoMethods extends MethodsType {
   add: (_args: { value: number }) => true | string;
   subtract: (_args: { value: number }) => true | string;
 }
 
-export class DemoOracle implements Oracle<Message, State, DemoMethods> {
+type Message = MessageType<'demo', DemoMethods, State>
+
+export class DemoOracle implements OracleType<'demo', Message, State, DemoMethods> {
   public readonly name = 'demo' // Note that the name must be unique and not used by other oracles
   private state: State = { value: 0 }
   public readonly peerStates: PeerStates<State> = {}
@@ -56,7 +58,7 @@ export class DemoOracle implements Oracle<Message, State, DemoMethods> {
     this.mempool = []
   }
 
-  private readonly methods: DemoMethods = {
+  readonly methods: DemoMethods = {
     add: (args: Parameters<DemoMethods['add']>[0]): ReturnType<DemoMethods['add']> => {
       if (args.value <= 0) return 'Value must be positive'
       this.state.value += args.value
@@ -74,7 +76,7 @@ export class DemoOracle implements Oracle<Message, State, DemoMethods> {
     return this.methods[method](args);
   }
 
-  onCall = async <T extends keyof Methods & string>(method: T, args: Parameters<DemoMethods[T]>[0], signalling: Signalling<Message>): Promise<void> => {
+  onCall = async <T extends keyof DemoMethods>(method: T, args: Parameters<DemoMethods[T]>[0], signalling: Signalling<Message>): Promise<void> => {
     if (!this.mempool.some(tx => JSON.stringify(tx) === JSON.stringify(args))) { // This should be done via signatures or something similar
       this.mempool.push(args)
       signalling.sendMessage([ this.name, 'call', method, args ]).catch(console.error)

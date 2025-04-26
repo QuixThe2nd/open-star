@@ -1,50 +1,34 @@
 import { parseEther, type Hex } from 'viem';
 import { KeyManager } from "../KeyManager";
 import type { Signalling } from '../Signalling';
-import { mode, sortObjectByKeys, type Message, type Methods, type Oracle, type PeerStates } from '../..';
+import { mode, sortObjectByKeys, type MessageType, type MethodsType, type OracleType, type PeerStates } from '../..';
 
-interface CoinMethods extends Methods {
-  mint: (_args: { to: Hex, amount: bigint }) => true | string;
-  burn: (_args: { to: Hex, amount: bigint }) => true | string;
-  transfer: (_args: { from: Hex, to: Hex, amount: bigint, time: number, signature: Hex }) => Promise<true | string>;
+interface CoinMethods extends MethodsType {
+  mint: (_args: { to: Hex, amount: `0x${string}` }) => true | string;
+  burn: (_args: { to: Hex, amount: `0x${string}` }) => true | string;
+  transfer: (_args: { from: Hex, to: Hex, amount: `0x${string}`, time: number, signature: Hex }) => Promise<true | string>;
 }
 
-type State = { [pubKey: string]: bigint }
-type SerializedState = { [pubKey: string]: Hex }
+type State = { [pubKey: string]: Hex }
 
-function serialize(state: State): SerializedState {
-  const serializedObj: SerializedState = {}
-  Object.entries(state).forEach(([key, value]) => {
-    serializedObj[key] = `0x${value.toString(16)}`
-  })
-  return serializedObj
-}
-
-function deserialize(state: SerializedState): State {
-  const serializedObj: State = {}
-  Object.entries(state).forEach(([key, value]) => {
-    serializedObj[key] = BigInt(value)
-  })
-  return serializedObj
-}
-
-export class CoinOracle implements Oracle<Message, SerializedState, CoinMethods> {
+type Message = MessageType<'coin', CoinMethods, State>
+export class CoinOracle implements OracleType<'coin', Message, State, CoinMethods> {
   private state: State = {}
   private readonly keyManager: KeyManager
   private mempool: Parameters<CoinMethods['transfer']>[0][] = []
   public readonly name = 'coin'
-  public readonly peerStates: PeerStates<SerializedState> = {}
-  public readonly boilerplateState: SerializedState = {}
+  public readonly peerStates: PeerStates<State> = {}
+  public readonly boilerplateState: State = {}
 
   constructor (keyManager: KeyManager) {
     this.keyManager = keyManager
   }
-  private readonly methods: CoinMethods = {
+  readonly methods: CoinMethods = {
     mint: (args: Parameters<CoinMethods['mint']>[0]): ReturnType<CoinMethods['mint']> => { // TODO: Temporary PoW challenge to get coins, only for initial distribution
       const to = args.to
       const amount = args.amount
 
-      this.state[to] ??= 0n
+      this.state[to] ??= `0x0`
       this.state[to] += amount
 
       return true
@@ -55,8 +39,8 @@ export class CoinOracle implements Oracle<Message, SerializedState, CoinMethods>
       const amount = args.amount
 
       if (!this.state[to]) return 'Address does not exist'
-      if (this.state[to] < amount) this.state[to] = 0n
-      else this.state[to] -= amount
+      if (this.state[to] < amount) this.state[to] = `0x0`
+      else this.state[to] = `0x${(BigInt(this.state[to]) + BigInt(amount)).toString(16)}`
 
       return true
     },
@@ -72,8 +56,8 @@ export class CoinOracle implements Oracle<Message, SerializedState, CoinMethods>
       if (time + 5_000 < +new Date()) return 'Transaction from past epoch'
       if (!await this.keyManager.verify(signature, JSON.stringify({ from, to, amount, time }), from)) return 'Invalid signature'
 
-      this.state[from] -= amount
-      this.state[to] ??= 0n
+      this.state[from] = `0x${(BigInt(this.state[from]) - BigInt(amount)).toString(16)}`
+      this.state[to] ??= `0x0`
       this.state[to] += amount
 
       console.log(`[COIN] Transferred ${amount} from ${from} to ${to}`)
@@ -81,23 +65,23 @@ export class CoinOracle implements Oracle<Message, SerializedState, CoinMethods>
     }
   }
 
-  getState(): SerializedState {
+  getState(): State {
     const obj: State = {}
     Object.entries(this.state).forEach(([key, value]) => {
       obj[key] = value
     })
-    return serialize(sortObjectByKeys(obj))
+    return sortObjectByKeys(obj)
   }
 
   blockYield(epochTime: number): number {
     const state = this.state
     let supply = 0n
     Object.keys(state).forEach(peer => {
-      supply += state[peer as keyof PeerStates<SerializedState>]!
+      supply += BigInt(state[peer as keyof PeerStates<State>]!)
     })
     let coinsStaked = 0n
     Object.keys(this.peerStates).forEach(peer => {
-      coinsStaked += state[peer as keyof PeerStates<SerializedState>] ?? 0n
+      coinsStaked += BigInt(state[peer as keyof PeerStates<State>] ?? '0x0')
     })
 
     const stakingRate = coinsStaked === 0n || supply === 0n ? 1 : Number(coinsStaked) / Number(supply)
@@ -111,7 +95,7 @@ export class CoinOracle implements Oracle<Message, SerializedState, CoinMethods>
 
     let netReputation = 0;
     for (const _peer in this.peerStates) {
-      const peer = _peer as keyof PeerStates<SerializedState>
+      const peer = _peer as keyof PeerStates<State>
       const state = this.peerStates[peer]!
       if (state.reputation === null) {
         delete this.peerStates[peer]
@@ -120,15 +104,15 @@ export class CoinOracle implements Oracle<Message, SerializedState, CoinMethods>
       netReputation += state.reputation;
       if (state.reputation > 0) {
         console.log('[COIN] Rewarding', peer.slice(0, 8) + '...')
-        this.call('mint', { to: peer, amount: myState[peer] ? BigInt(Math.floor(Number(myState[peer])*blockYield)) : parseEther('1') })
+        this.call('mint', { to: peer, amount: `0x(myState[peer] ? BigInt(Math.floor(Number(myState[peer])*blockYield)) : parseEther('1')).toString(16)` })
       } else if (state.reputation < 0 && myState[peer]) {
         console.log('[COIN] Slashing', peer.slice(0, 8) + '...')
-        this.call('burn', { to: peer, amount: (myState[peer]*9n)/10n })
+        this.call('burn', { to: peer, amount: `0x${((BigInt(myState[peer])*9n)/10n).toString(16)}` })
       }
       state.reputation = null
     }
     if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
-    this.call('mint', { to: signalling.address, amount: myState[signalling.address] ? BigInt(Math.floor(Number(myState[signalling.address])*blockYield)) : parseEther('1') })
+    this.call('mint', { to: signalling.address, amount: `0x${(myState[signalling.address] ? BigInt(Math.floor(Number(myState[signalling.address])*blockYield)) : parseEther('1')).toString(16)}` })
     
     this.mempool = []
     console.log('[COIN]', this.getState())
@@ -139,7 +123,7 @@ export class CoinOracle implements Oracle<Message, SerializedState, CoinMethods>
     return this.methods[method](args);
   }
 
-  onCall<T extends keyof CoinMethods & string>(method: T, _args: Parameters<CoinMethods[T]>[0], signalling: Signalling<Message>): void {
+  onCall<T extends keyof CoinMethods>(method: T, _args: Parameters<CoinMethods[T]>[0], signalling: Signalling<Message>): void {
     if (method === 'transfer') {
       const args = _args as Parameters<CoinMethods['transfer']>[0]
       if (!this.mempool.some(tx => tx.signature === args.signature)) {
@@ -158,8 +142,7 @@ export class CoinOracle implements Oracle<Message, SerializedState, CoinMethods>
       await new Promise((res) => setTimeout(res, 100))
       mostCommonState = mode(Object.values(this.peerStates).map(state => state.lastReceive))
     }
-    console.log(mostCommonState)
-    this.state = deserialize(mostCommonState)
+    this.state = mostCommonState
     signalling.sendMessage([ this.name, 'state', mostCommonState ]).catch(console.error)
   }
 }
