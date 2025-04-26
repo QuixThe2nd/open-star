@@ -10,7 +10,25 @@ To run Open Star, execute:
 npx tsx src/client.ts
 ```
 
-If the script stalls at `Announcing`, run a second node. This happens when no peers are online.
+If the script stalls at `Announcing`, run a second node. This happens when no peers are online. Avoid starting up 2 nodes at the same time, there is a bug where they are unable to connect.
+
+## Library
+Open Star can be imported using `npm install QuixThe2nd/open-star` and used like `src/client.ts` to import and run oracles.
+
+### Usage
+To use it, first import Open Star and your Oracle:
+```
+import { OpenStar } from "QuixThe2nd/open-star";
+import { DemoOracle } from "QuixThe2nd/open-star/classes/oracle/Demo";
+```
+
+Then initiate your oracle and pass it to Open Star:
+```
+const demo = new DemoOracle()
+new OpenStar<'demo', ReturnType<typeof demo.getState>, typeof demo.methods, typeof demo>(demo)
+```
+
+Open Star will then run your Oracle.
 
 ## Creating an Oracle
 To create an oracle, create a file at `./src/classes/oracle/Demo.ts`, then define the type your state follows:
@@ -20,9 +38,9 @@ type State = { value: number }
 
 Then define the methods available to mutate the state:
 ```ts
-import { type Methods } from '../..';
+import { type MethodsType } from '../..';
 
-interface DemoMethods extends Methods {
+interface DemoMethods extends MethodsType {
   add: (_args: { value: number }) => true | string;
   subtract: (_args: { value: number }) => true | string;
 }
@@ -31,20 +49,18 @@ interface DemoMethods extends Methods {
 Now create your Oracle class, implementing these values:
 
 ```ts
-import { type Message, type Oracle } from '../..';
+import { type MessageType, type OracleType } from '../..';
 
-export class DemoOracle implements Oracle<Message, State, DemoMethods> {
+type Message = MessageType<'demo', DemoMethods, State>
+export class DemoOracle implements OracleType<'demo', Message, State, DemoMethods> {
   public readonly name = 'demo' // Note that the name must be unique and not used by other oracles
 }
 ```
 
-Import the PeerStates type:
-```ts
-import { type PeerStates } from '../..';
-```
-
 Inside your oracle class, define your state with a getter as well as a variable to keep track of other peers' states:
 ```ts
+import { type PeerStates } from '../..';
+
 private state: State = { value: 0 }
 public readonly peerStates: PeerStates<State> = {}
 
@@ -96,7 +112,7 @@ Now you need to define the function that processes calls received from peers as 
 ```ts
 private mempool: Parameters<DemoMethods['add' | 'subtract']>[0][] = []
 
-onCall = async <T extends keyof Methods & string>(method: T, args: Parameters<DemoMethods[T]>[0], signalling: Signalling<Message>): Promise<void> => {
+onCall = async <T extends keyof DemoMethods>(method: T, args: Parameters<DemoMethods[T]>[0], signalling: Signalling<Message>): Promise<void> => {
   if (!this.mempool.some(tx => JSON.stringify(tx) === JSON.stringify(args))) { // This should be done via signatures or something similar
     this.mempool.push(args)
     signalling.sendMessage([ this.name, 'call', method, args ]).catch(console.error)
@@ -132,17 +148,7 @@ onEpoch = (): void => {
 }
 ```
 
-Once you've made your oracle, import it in `index.ts` and add it to the oracles definition at the top. Like so:
-
-```ts
-import { DemoOracle } from "./classes/oracle/Demo";
-
-const oraclesDefinition = {
-  demo: new DemoOracle()
-}
-```
-
-Open Star will handle the rest. Just start it up and your node will connect to other peers and partake in consensus. The full example is available at `./src/classes/oracle/Demo.ts`.
+Open Star will handle the rest. Just import it in your node (e.g. `src/client.ts`) and you'll connect to other peers and partake in consensus. The full example is available at `./src/classes/oracle/Demo.ts`.
 
 ## Linting
 ```
