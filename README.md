@@ -17,13 +17,13 @@ Open Star can be imported using `npm install QuixThe2nd/open-star` and used like
 
 ### Usage
 To use it, first import Open Star and your Oracle:
-```
+```ts
 import { OpenStar } from "QuixThe2nd/open-star";
 import { DemoOracle } from "QuixThe2nd/open-star/classes/oracle/Demo";
 ```
 
 Then initiate your oracle and pass it to Open Star:
-```
+```ts
 const demo = new DemoOracle()
 new OpenStar<'demo', ReturnType<typeof demo.getState>, typeof demo.methods, typeof demo>(demo)
 ```
