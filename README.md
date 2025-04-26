@@ -90,7 +90,7 @@ onConnect = async (signalling: Signalling<Message>): Promise<void> => {
 
 Then implement the methods you defined earlier and define a function to call the methods:
 ```ts
-private readonly methods: DemoMethods = {
+readonly methods: DemoMethods = {
   add: (args: Parameters<DemoMethods['add']>[0]): ReturnType<DemoMethods['add']> => {
     if (args.value <= 0) return 'Value must be positive'
     this.state.value += args.value
