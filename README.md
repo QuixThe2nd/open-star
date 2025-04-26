@@ -63,6 +63,7 @@ import { type PeerStates } from '../..';
 
 private state: State = { value: 0 }
 public readonly peerStates: PeerStates<State> = {}
+public readonly boilerplateState: State = { value: 0 };
 
 getState = (): State => this.state;
 ```
