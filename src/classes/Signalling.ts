@@ -1,12 +1,12 @@
 import WebSocket, { type RawData } from 'ws'
-import Peer, { type Instance as PeerInstance } from 'simple-peer'
+import Peer, { type Instance as PeerInstance, type SignalData } from 'simple-peer'
 import WebRTC from '@roamhq/wrtc'
 import type { Hex } from 'viem';
 import type { KeyManager } from './KeyManager';
 
 type AnnounceMessage = { type: 'announce', from: Hex }
-type InitializeMessage = { type: 'initialize', to: Hex, from: Hex, data: object }
-type FinalizeMessage = { type: 'finalize', to: Hex, from: Hex, data: object }
+type InitializeMessage = { type: 'initialize', to: Hex, from: Hex, data: SignalData }
+type FinalizeMessage = { type: 'finalize', to: Hex, from: Hex, data: SignalData }
 type SignallingMessage = AnnounceMessage | InitializeMessage | FinalizeMessage
 
 export class Signalling<Message> {
@@ -21,7 +21,7 @@ export class Signalling<Message> {
     this.onConnect = oracle.onConnect
     this.keyManager = oracle.keyManager
 
-    console.log('Connecting...')
+    console.log(`[${oracle.name}] Connecting...`)
 
     console.log(`wss://rooms.deno.dev/openstar-${oracle.name}`)
     this.ws = new WebSocket(`wss://rooms.deno.dev/openstar-${oracle.name}`);
@@ -53,7 +53,7 @@ export class Signalling<Message> {
       this.peers.delete(from)
     });
     peer.on('close', () => this.peers.delete(from));
-    peer.on('signal', (data: object) => this.send({ type: initiator ? 'initialize' : 'finalize', to: from, from: this.keyManager.getPublicKey(), data: data }));
+    peer.on('signal', (data: SignalData) => this.send({ type: initiator ? 'initialize' : 'finalize', to: from, from: this.keyManager.getPublicKey(), data: data }));
     peer.on('data', (data: string): void => {
       const { signature, message } = JSON.parse(data) as { signature: Hex, message: Message }
       this.keyManager.verify(signature, JSON.stringify(message), from).then(async status => {
@@ -82,12 +82,12 @@ export class Signalling<Message> {
   // Step 3. Save candidates and send candidates back
   private readonly finalize = (message: InitializeMessage): void => {
     console.log('3. Sending candidate')
-    this.createPeer(message.from, false).signal(message.data.toString());
+    this.createPeer(message.from, false).signal(message.data);
   }
   // Step 4. Save candidates
   private readonly signal = (message: FinalizeMessage): void => {
     console.log('4. Saving candidate')
-    this.peers.get(message.from)?.signal(message.data.toString());
+    this.peers.get(message.from)?.signal(message.data);
   }
   /******* Handshake - END */
 
