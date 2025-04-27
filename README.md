@@ -115,10 +115,15 @@ type Mempool = Parameters<DemoMethods['add' | 'subtract']>[0][]
 const mempool: Mempool = []
 ```
 
+Now set the epoch time (similar to block time):
+```ts
+const epochTime = 60_000
+```
+
 Next define and export your start function:
 ```ts
 const start = (keyManager: KeyManager): OpenStar<'DEMO', State, DemoMethods, Mempool> => {
-  const openStar = new OpenStar<'DEMO', State, DemoMethods, Mempool>('DEMO', { startupState, reputationChange, state, peerStates, call, mempool, methods, keyManager })
+  const openStar = new OpenStar<'DEMO', State, DemoMethods, Mempool>('DEMO', { startupState, reputationChange, state, peerStates, call, mempool, methods, keyManager, epochTime })
   return openStar
 }
 

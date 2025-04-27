@@ -43,6 +43,8 @@ const reputationChange = (reputation: { [key: `0x${string}`]: number }): void =>
   // Reward/Punish yourself the same way others would to you
 }
 
+const epochTime = 60_000
+
 const start = (keyManager: KeyManager): OpenStar<'DEMO', State, DemoMethods, Mempool> => {
   const call = async <T extends keyof DemoMethods>(method: T, args: Parameters<DemoMethods[T]>[0]): Promise<void> => {
     if (!mempool.some(tx => JSON.stringify(tx) === JSON.stringify(args))) { // This should be done via signatures or something similar
@@ -52,7 +54,7 @@ const start = (keyManager: KeyManager): OpenStar<'DEMO', State, DemoMethods, Mem
     }
   }
 
-  const openStar = new OpenStar<'DEMO', State, DemoMethods, Mempool>('DEMO', { startupState, reputationChange, state, peerStates, call, mempool, methods, keyManager })
+  const openStar = new OpenStar<'DEMO', State, DemoMethods, Mempool>('DEMO', { startupState, reputationChange, state, peerStates, call, mempool, methods, keyManager, epochTime })
   return openStar
 }
 

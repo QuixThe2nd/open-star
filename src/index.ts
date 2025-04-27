@@ -15,6 +15,7 @@ type Oracle<OracleState extends object, OracleMethods extends Methods, OracleMem
   mempool: OracleMempool
   methods: OracleMethods
   keyManager: KeyManager
+  epochTime: number
 }
 
 export const mode = <State>(arr: State[]): State | undefined => arr.toSorted((a,b) => arr.filter(v => v===a).length - arr.filter(v => v===b).length).pop();
@@ -31,7 +32,6 @@ export type PingPongMessage = ['ping' | 'pong'];
 
 export class OpenStar<OracleName extends string, OracleState extends object, OracleMethods extends Methods, OracleMempool extends unknown[]> {
   public readonly signalling: Signalling<Message<OracleName, OracleMethods, OracleState> | PingPongMessage>
-  private readonly epochTime = 5_000
   private epochCount = -1
   readonly keyManager: KeyManager
   private lastEpochState: string = ''
@@ -55,11 +55,11 @@ export class OpenStar<OracleName extends string, OracleState extends object, Ora
       this.sendState().catch(console.error)
 
       const startTime = +new Date();
-      await new Promise((res) => setTimeout(res, (Math.floor(startTime / this.epochTime) + 1) * this.epochTime - startTime))
+      await new Promise((res) => setTimeout(res, (Math.floor(startTime / this.oracle.epochTime) + 1) * this.oracle.epochTime - startTime))
       await this.epoch();
       setInterval(() => {
         this.epoch().catch(console.error)
-      }, this.epochTime);
+      }, this.oracle.epochTime);
     }
   }
 
@@ -109,7 +109,7 @@ export class OpenStar<OracleName extends string, OracleState extends object, Ora
         state.reputation = null
       }
       if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
-      await this.oracle.reputationChange(reputation, this.epochTime)
+      await this.oracle.reputationChange(reputation, this.oracle.epochTime)
       this.oracle.mempool = [] as unknown[] as OracleMempool
       console.log(`[${this.name}]`, this.oracle.state)
       this.lastEpochState = JSON.stringify(this.oracle.state)

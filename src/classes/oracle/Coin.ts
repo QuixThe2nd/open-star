@@ -30,6 +30,7 @@ const start = (keyManager: KeyManager): OpenStar<'COIN', State, CoinMethods, Tra
     keyManager,
     mempool: [],
     peerStates: {},
+    epochTime: 5_000,
     state: {},
     async startupState(): Promise<State> {
       let mostCommonState = undefined

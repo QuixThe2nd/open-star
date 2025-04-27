@@ -17,6 +17,7 @@ class NameServiceOracle {
   public mempool: Mempool = []
   public openStar: OpenStar<'NAMESERVICE', State, NameServiceMethods, Mempool>
   public readonly keyManager: KeyManager
+  public readonly epochTime = 30_000
 
   constructor (keyManager: KeyManager) {
     this.keyManager = keyManager
