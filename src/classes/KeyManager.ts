@@ -13,8 +13,8 @@ export class KeyManager {
     return `keyPair_${this.id}.json`;
   }
 
-  constructor(id = '') {
-    this.id = id
+  constructor(id: string | number = '') {
+    this.id = String(id)
     if (fs.existsSync(this.keyFile)) {
       const file = fs.readFileSync(this.keyFile, 'utf-8');
       const { mnemonic } = JSON.parse(file) as { mnemonic: string };

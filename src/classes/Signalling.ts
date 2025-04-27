@@ -16,15 +16,15 @@ export class Signalling<Message> {
   private readonly onConnect: () => Promise<void>
   private readonly keyManager: KeyManager
 
-  constructor(oracleName: string, onMessage: (_data: Message, _from: Hex, _callback: (_message: Message) => void) => void, onConnect: () => Promise<void>, keyManager: KeyManager) {
-    this.onMessage = onMessage
-    this.onConnect = onConnect
-    this.keyManager = keyManager
+  constructor(oracle: { name: string, onMessage: (_data: Message, _from: Hex, _callback: (_message: Message) => void) => void, onConnect: () => Promise<void>, keyManager: KeyManager }) {
+    this.onMessage = oracle.onMessage
+    this.onConnect = oracle.onConnect
+    this.keyManager = oracle.keyManager
 
     console.log('Connecting...')
 
-    console.log(`wss://rooms.deno.dev/openstar-${oracleName}`)
-    this.ws = new WebSocket(`wss://rooms.deno.dev/openstar-${oracleName}`);
+    console.log(`wss://rooms.deno.dev/openstar-${oracle.name}`)
+    this.ws = new WebSocket(`wss://rooms.deno.dev/openstar-${oracle.name}`);
     this.ws.on('message', (data) => this.onWsMessage(data));
     this.ws.on('open', () => this.announce());
   }
@@ -82,12 +82,12 @@ export class Signalling<Message> {
   // Step 3. Save candidates and send candidates back
   private readonly finalize = (message: InitializeMessage): void => {
     console.log('3. Sending candidate')
-    this.createPeer(message.from, false).signal(message.data);
+    this.createPeer(message.from, false).signal(message.data.toString());
   }
   // Step 4. Save candidates
   private readonly signal = (message: FinalizeMessage): void => {
     console.log('4. Saving candidate')
-    this.peers.get(message.from)?.signal(message.data);
+    this.peers.get(message.from)?.signal(message.data.toString());
   }
   /******* Handshake - END */
 

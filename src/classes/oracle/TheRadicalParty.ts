@@ -71,9 +71,7 @@ export class TheRadicalPartyOracle implements OracleType<'theRadicalParty', Mess
     }
   }
 
-  onConnect = async (signalling: Signalling<Message>): Promise<void> => {
-    signalling.sendMessage([ this.name, 'state', this.getState() ]).catch(console.error)
-
+  onConnect = async (): Promise<State> => {
     // Example bootstrap logic
     let mostCommonState = undefined;
     while (mostCommonState == undefined) {
@@ -84,8 +82,7 @@ export class TheRadicalPartyOracle implements OracleType<'theRadicalParty', Mess
       */
     }
 
-    this.state = mostCommonState
-    signalling.sendMessage([ this.name, 'state', mostCommonState ]).catch(console.error)
+    return mostCommonState
   }
 
   onEpoch = (signalling: Signalling<Message | PingPongMessage>, epochTime: number): void => {
