@@ -1,7 +1,7 @@
 {
 	"compilerOptions": {
 		// Environment setup & latest features
-		"lib": ["ES2024"],
+		"lib": ["ES2024", "DOM"],
 		"target": "ES2024",
 		"module": "ES2022",
 		"moduleDetection": "force",
