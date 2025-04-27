@@ -31,9 +31,9 @@ start()
 Open Star will then run your oracle.
 
 ## Creating an Oracle
-To create an oracle, create a file at `./src/classes/oracle/Demo.ts`, then define your state and it's schema:
+To create an oracle, import `QuixThe2nd/open-star`, then define your state and it's schema:
 ```ts
-import { type PeerStates } from '../..';
+import { type PeerStates } from 'open-star';
 
 type State = { value: number }
 
@@ -43,7 +43,7 @@ const peerStates: PeerStates<State> = {}
 
 Then define the methods available to mutate the state:
 ```ts
-import { type Methods } from '../..';
+import { type Methods } from 'open-star';
 
 interface DemoMethods extends Methods {
   add: (_args: { value: number }) => void | string;
