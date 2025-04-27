@@ -35,6 +35,7 @@ export class OpenStar<OracleName extends string, OracleState extends object, Ora
   private readonly epochTime = 5_000
   private epochCount = -1
   readonly keyManager: KeyManager
+  private lastEpochState: string = ''
   connected = false
 
   constructor(oracle: Oracle, keyManager?: KeyManager) {
@@ -89,8 +90,13 @@ export class OpenStar<OracleName extends string, OracleState extends object, Ora
   private readonly epoch = async (): Promise<void> => {
     console.log(`[${this.oracle.name.toUpperCase()}] Epoch:`, new Date().toISOString());
     this.epochCount++
-    await this.oracle.onEpoch(this.signalling, this.epochTime)
-    console.log(`[${this.oracle.name.toUpperCase()}]`, this.oracle.getState())
+
+    const state = this.oracle.getState()
+    if (JSON.stringify(state) !== this.lastEpochState) {
+      await this.oracle.onEpoch(this.signalling, this.epochTime)
+      console.log(`[${this.oracle.name.toUpperCase()}]`, this.oracle.getState())
+      this.lastEpochState = JSON.stringify(this.oracle.getState())
+    }
 
     this.signalling.sendMessage([this.oracle.name, 'state', this.oracle.getState()]).catch(console.error)
   }
