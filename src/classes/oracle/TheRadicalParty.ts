@@ -99,7 +99,5 @@ export class TheRadicalPartyOracle {
     }
 
     this.call('mint', { to: this.keyManager.getPublicKey(), amount: `0x${(this.state.balances[this.keyManager.getPublicKey()] ? BigInt(Math.floor(Number(this.state.balances[this.keyManager.getPublicKey()])*blockYield)) : parseEther('1')).toString(16)}` })
-
-    this.mempool = []
   }
 }
