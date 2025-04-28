@@ -1,5 +1,5 @@
 # Open Star
-Open Star is a ledger-free consensus mechanism inspired by oracles. It aims to achieve the same functionality of classic blockchains without the overhead.
+Open Star is a ledger-free consensus mechanism inspired by oracles. It aims to achieve the same functionality of classic blockchains without the overhead. Open Star can be used as a decentralized database.
 
 ## How it works
 Open Star is a framework that allows for consensus to be achieved around arbitrary information. By default, Open Star has 3 oracles, which are included in this repository, a `COIN`, `NAMESERVICE`, and `DEMO` oracle. You can find these oracles at `./src/classes/oracle/*.ts`. Each oracle has been written in a different style to demonstrate some ways you can create an oracle. `DEMO` is written functionally, `NAMESERVICE` is written as a class, and `COIN` is written in a single object.
@@ -20,7 +20,7 @@ Open Star can be imported using `npm install QuixThe2nd/open-star` and used like
 ### Usage
 To use an oracle, import it's start function:
 ```ts
-import start from "QuixThe2nd/open-star/classes/oracle/Demo"
+import start from "open-star/classes/oracle/Demo"
 ```
 
 Then run it:
@@ -31,9 +31,9 @@ start()
 Open Star will then run your oracle.
 
 ## Creating an Oracle
-To create an oracle, create a file at `./src/classes/oracle/Demo.ts`, then define your state and it's schema:
+To create an oracle, import `QuixThe2nd/open-star`, then define your state and it's schema:
 ```ts
-import { type PeerStates } from '../..';
+import { type PeerStates } from 'open-star';
 
 type State = { value: number }
 
@@ -43,7 +43,7 @@ const peerStates: PeerStates<State> = {}
 
 Then define the methods available to mutate the state:
 ```ts
-import { type Methods } from '../..';
+import { type Methods } from 'open-star';
 
 interface DemoMethods extends Methods {
   add: (_args: { value: number }) => void | string;
