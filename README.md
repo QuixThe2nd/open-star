@@ -20,7 +20,7 @@ Open Star can be imported using `npm install QuixThe2nd/open-star` and used like
 ### Usage
 To use an oracle, import it's start function:
 ```ts
-import start from "QuixThe2nd/open-star/classes/oracle/Demo"
+import start from "open-star/classes/oracle/Demo"
 ```
 
 Then run it:
