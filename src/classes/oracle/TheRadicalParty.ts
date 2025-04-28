@@ -1,28 +1,29 @@
 import { parseEther, type Hex } from 'viem';
-import { type MethodsType, type MessageType, type OracleType, type PeerStates, mode, sortObjectByKeys, type PingPongMessage } from '../..';
-import type { Signalling } from '../Signalling';
+import { KeyManager, type Methods, OpenStar, type PeerStates, mode } from '../..';
 
 type State = {
   laws: string[],
   balances: { [pubKey: string]: Hex }
 }
 
-interface TheRadicalPartyMethods extends MethodsType {
-  mint: (_args: { to: Hex, amount: Hex }) => true | string;
-  burn: (_args: { to: Hex, amount: Hex }) => true | string;
-  submitLaw: (_args: { value: string }) => true | string;
+interface TheRadicalPartyMethods extends Methods {
+  mint: (_args: { to: Hex, amount: Hex }) => void | string;
+  burn: (_args: { to: Hex, amount: Hex }) => void | string;
+  submitLaw: (_args: { value: string }) => void | string;
 }
 
-type Message = MessageType<'theRadicalParty', TheRadicalPartyMethods, State>
-
-export class TheRadicalPartyOracle implements OracleType<'theRadicalParty', Message, State, TheRadicalPartyMethods> {
-  public readonly name = 'theRadicalParty'
-  private state: State = { laws: [], balances: {} }
+export class TheRadicalPartyOracle {
+  public readonly state: State = { laws: [], balances: {} }
   public readonly peerStates: PeerStates<State> = {}
-  private mempool: Parameters<TheRadicalPartyMethods['addLaw']>[0][] = []
-  public readonly boilerplateState: State = { laws: [], balances: {} }
+  public mempool: Parameters<TheRadicalPartyMethods['addLaw']>[0][] = []
+  public readonly openStar: OpenStar<'THERADICALPARTY', State, TheRadicalPartyMethods, typeof this.mempool>
+  public readonly keyManager: KeyManager
+  public readonly epochTime = 15_000
 
-  getState = (): State => sortObjectByKeys(this.state)
+  constructor(keyManager: KeyManager) {
+    this.keyManager = keyManager
+    this.openStar = new OpenStar<'THERADICALPARTY', State, TheRadicalPartyMethods, typeof this.mempool>('THERADICALPARTY', this)
+  }
 
   blockYield(epochTime: number): number {
     let supply = 0n
@@ -42,19 +43,16 @@ export class TheRadicalPartyOracle implements OracleType<'theRadicalParty', Mess
   readonly methods: TheRadicalPartyMethods = {
     mint: (args: Parameters<TheRadicalPartyMethods['mint']>[0]): ReturnType<TheRadicalPartyMethods['mint']> => {
       this.state.balances[args.to] = `0x${(BigInt(this.state.balances[args.to] ?? 0) + BigInt(args.amount)).toString(16)}`
-      return true
     },
     burn: (args: Parameters<TheRadicalPartyMethods['burn']>[0]): ReturnType<TheRadicalPartyMethods['burn']> => {
       if (!this.state.balances[args.to]) return 'Address does not exist'
       if (BigInt(this.state.balances[args.to]!) < BigInt(args.amount)) this.state.balances[args.to] = `0x0`
       else this.state.balances[args.to] = `0x${(BigInt(this.state.balances[args.to] ?? 0) - BigInt(args.amount)).toString(16)}`
-      return true
     },
     submitLaw: (args: Parameters<TheRadicalPartyMethods['submitLaw']>[0]): ReturnType<TheRadicalPartyMethods['submitLaw']> => {
       if (args.value.length === 0) return 'Law is empty'
       if (args.value.length > 280) return 'Law must be under 280 characters'
       this.state.laws.push(args.value)
-      return true
     }
   }
 
@@ -63,15 +61,15 @@ export class TheRadicalPartyOracle implements OracleType<'theRadicalParty', Mess
     return this.methods[method](args);
   }
 
-  onCall = async <T extends keyof TheRadicalPartyMethods>(method: T, args: Parameters<TheRadicalPartyMethods[T]>[0], signalling: Signalling<Message>): Promise<void> => {
+  onCall = async <T extends keyof TheRadicalPartyMethods>(method: T, args: Parameters<TheRadicalPartyMethods[T]>[0]): Promise<void> => {
     if (!this.mempool.some(tx => JSON.stringify(tx) === JSON.stringify(args))) { // This should be done via signatures or something similar
       this.mempool.push(args)
-      signalling.sendMessage([ this.name, 'call', method, args ]).catch(console.error)
+      this.openStar.sendMessage([ 'THERADICALPARTY', 'call', method, args ]).catch(console.error)
       await this.call(method, args)
     }
   }
 
-  onConnect = async (): Promise<State> => {
+  startupState = async (): Promise<State> => {
     // Example bootstrap logic
     let mostCommonState = undefined;
     while (mostCommonState == undefined) {
@@ -85,32 +83,22 @@ export class TheRadicalPartyOracle implements OracleType<'theRadicalParty', Mess
     return mostCommonState
   }
 
-  onEpoch = (signalling: Signalling<Message | PingPongMessage>, epochTime: number): void => {
+  reputationChange = (reputation: { [peer: `0x${string}`]: number }, epochTime: number): void => {
     const blockYield = this.blockYield(epochTime)
 
-    let netReputation = 0;
-    for (const _peer in this.peerStates) {
+    for (const _peer in reputation) {
       const peer = _peer as keyof PeerStates<State>
-      const state = this.peerStates[peer]!
-      if (state.reputation === null) {
-        delete this.peerStates[peer]
-        return
-      }
-      netReputation += state.reputation;
-
       const balance = BigInt(this.state.balances[peer] ?? `0x0`)
-      if (state.reputation > 0) {
+      if (reputation[peer]! > 0) {
         console.log('[NAMESERVICE] Rewarding', peer.slice(0, 8) + '...')
         this.call('mint', { to: peer, amount: `0x${(balance ? BigInt(Math.floor(Number(balance)*blockYield)) : parseEther('1')).toString(16)}` })
-      } else if (state.reputation < 0 && this.state.balances[peer]) {
+      } else if (reputation[peer]! < 0 && this.state.balances[peer]) {
         console.log('[NAMESERVICE] Slashing', peer.slice(0, 8) + '...')
         this.call('burn', { to: peer, amount: `0x${((balance*9n)/10n).toString(16)}` })
       }
-      state.reputation = null
     }
-    if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
 
-    this.call('mint', { to: signalling.address, amount: `0x${(this.state.balances[signalling.address] ? BigInt(Math.floor(Number(this.state.balances[signalling.address])*blockYield)) : parseEther('1')).toString(16)}` })
+    this.call('mint', { to: this.keyManager.getPublicKey(), amount: `0x${(this.state.balances[this.keyManager.getPublicKey()] ? BigInt(Math.floor(Number(this.state.balances[this.keyManager.getPublicKey()])*blockYield)) : parseEther('1')).toString(16)}` })
 
     this.mempool = []
   }

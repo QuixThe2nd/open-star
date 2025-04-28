@@ -11,7 +11,7 @@ type Oracle<OracleState extends object, OracleMethods extends Methods, OracleMem
   reputationChange: (_reputation: { [key: `0x${string}`]: number }, _epochTime: number) => Promise<void> | void,
   state: OracleState,
   peerStates: PeerStates<OracleState>,
-  call: <T extends keyof OracleMethods>(_method: T, _args: Parameters<OracleMethods[T]>[0]) => Promise<void> | void
+  call: <T extends keyof OracleMethods>(_method: T, _args: Parameters<OracleMethods[T]>[0]) => Promise<void | string> | void | string
   mempool: OracleMempool
   methods: OracleMethods
   keyManager: KeyManager
