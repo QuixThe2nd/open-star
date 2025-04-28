@@ -47,19 +47,12 @@ const peerStates: PeerStates<typeof state> = {}
 ### Methods
 Then define the methods available to mutate the shared state (add and subtract):
 ```ts
-import { type Methods } from 'open-star';
-
-interface DemoMethods extends Methods {
-  add: (_args: { value: number }) => void | string;
-  subtract: (_args: { value: number }) => void | string;
-}
-
-const methods: DemoMethods = {
-  add: (args: Parameters<DemoMethods['add']>[0]): ReturnType<DemoMethods['add']> => {
+const methods = {
+  add: (args: { value: number }): string | void => {
     if (args.value <= 0) return 'Value must be positive'
     state.value += args.value
   },
-  subtract: (args: Parameters<DemoMethods['subtract']>[0]): ReturnType<DemoMethods['subtract']> => {
+  subtract: (args: { value: number }): string | void => {
     if (args.value <= 0) return 'Value must be positive'
     state.value -= args.value
   }
@@ -116,12 +109,24 @@ Set the epoch time (similar to block time):
 ```ts
 const epochTime = 60_000
 ```
+### Call Handler
+Add a function that handles method calls inside your start function:
+```ts
+const call = <T extends keyof typeof methods>(method: T, args: Parameters<typeof methods[T]>[0]): void => {
+  if (!mempool.some(tx => JSON.stringify(tx) === JSON.stringify(args))) { // This should be done via signatures or something similar
+    mempool.push({ ...args, method })
+    openStar.sendMessage([ 'DEMO', 'call', method, args ]).catch(console.error)
+    methods[method](args)
+  }
+}
+```
 
 ### Start Function
-Define and export your start function:
+Finally define and export your start function:
 ```ts
-const start = (keyManager: KeyManager): OpenStar<'DEMO', typeof state, DemoMethods, Mempool> => {
-  const openStar = new OpenStar<'DEMO', typeof state, DemoMethods, Mempool>('DEMO', { startupState, reputationChange, state, peerStates, call, mempool, methods, keyManager, epochTime })
+let openStar: OpenStar<'DEMO', typeof state, typeof methods, typeof mempool>
+const start = (keyManager: KeyManager): OpenStar<'DEMO', typeof state, typeof methods, typeof mempool> => {
+  openStar = new OpenStar<'DEMO', typeof state, typeof methods, typeof mempool>('DEMO', { startupState, reputationChange, state, peerStates, call, mempool, methods, keyManager, epochTime })
   return openStar
 }
 
@@ -129,17 +134,6 @@ export default start
 ```
 This is the function you call to start your Oracle.
 
-### Call Handler
-And finally add a function that handles method calls inside your start function:
-```ts
-const call = async <T extends keyof DemoMethods>(method: T, args: Parameters<DemoMethods[T]>[0]): Promise<void> => {
-  if (!mempool.some(tx => JSON.stringify(tx) === JSON.stringify(args))) { // This should be done via signatures or something similar
-    mempool.push(args)
-    openStar.sendMessage([ 'DEMO', 'call', method, args ]).catch(console.error)
-    await methods[method]!(args)
-  }
-}
-```
 
 Open Star will handle the rest. Just call `start()` and you'll connect to other peers and partake in consensus. The full example is available at `./src/classes/oracle/Demo.ts`.
 

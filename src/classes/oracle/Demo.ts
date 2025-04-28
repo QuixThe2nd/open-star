@@ -1,20 +1,16 @@
-import { type Methods, type PeerStates, KeyManager, OpenStar } from '../..';
-
-interface DemoMethods extends Methods {
-  add: (_args: { value: number }) => void | string;
-  subtract: (_args: { value: number }) => void | string;
-}
+import { type PeerStates, KeyManager, OpenStar } from '../..';
 
 const state = { value: 0 }
 const peerStates: PeerStates<typeof state> = {}
-const mempool: Parameters<DemoMethods['add' | 'subtract']>[0][] = []
+const mempool: { value: number, method: 'add' | 'subtract' }[] = []
+const epochTime = 60_000
 
-const methods: DemoMethods = {
-  add: (args: Parameters<DemoMethods['add']>[0]): ReturnType<DemoMethods['add']> => {
+const methods = {
+  add: (args: { value: number }): string | void => {
     if (args.value <= 0) return 'Value must be positive'
     state.value += args.value
   },
-  subtract: (args: Parameters<DemoMethods['subtract']>[0]): ReturnType<DemoMethods['subtract']> => {
+  subtract: (args: { value: number }): string | void => {
     if (args.value <= 0) return 'Value must be positive'
     state.value -= args.value
   }
@@ -41,18 +37,17 @@ const reputationChange = (reputation: { [key: `0x${string}`]: number }): void =>
   // Reward/Punish yourself the same way others would to you
 }
 
-const epochTime = 60_000
-
-const start = (keyManager: KeyManager): OpenStar<'DEMO', typeof state, DemoMethods, typeof mempool> => {
-  const call = async <T extends keyof DemoMethods>(method: T, args: Parameters<DemoMethods[T]>[0]): Promise<void> => {
-    if (!mempool.some(tx => JSON.stringify(tx) === JSON.stringify(args))) { // This should be done via signatures or something similar
-      mempool.push(args)
-      openStar.sendMessage([ 'DEMO', 'call', method, args ]).catch(console.error)
-      await methods[method]!(args)
-    }
+const call = <T extends keyof typeof methods>(method: T, args: Parameters<typeof methods[T]>[0]): void => {
+  if (!mempool.some(tx => JSON.stringify(tx) === JSON.stringify(args))) { // This should be done via signatures or something similar
+    mempool.push({ ...args, method })
+    openStar.sendMessage([ 'DEMO', 'call', method, args ]).catch(console.error)
+    methods[method](args)
   }
+}
 
-  const openStar = new OpenStar<'DEMO', typeof state, DemoMethods, typeof mempool>('DEMO', { startupState, reputationChange, state, peerStates, call, mempool, methods, keyManager, epochTime })
+let openStar: OpenStar<'DEMO', typeof state, typeof methods, typeof mempool>
+const start = (keyManager: KeyManager): OpenStar<'DEMO', typeof state, typeof methods, typeof mempool> => {
+  openStar = new OpenStar<'DEMO', typeof state, typeof methods, typeof mempool>('DEMO', { startupState, reputationChange, state, peerStates, call, mempool, methods, keyManager, epochTime })
   return openStar
 }
 
