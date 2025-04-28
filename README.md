@@ -1,5 +1,5 @@
 # Open Star
-Open Star is a ledger-free consensus mechanism inspired by oracles. It aims to achieve the same functionality of classic blockchains without the overhead.
+Open Star is a ledger-free consensus mechanism inspired by oracles. It aims to achieve the same functionality of classic blockchains without the overhead. Open Star can be used as a decentralized database.
 
 ## How it works
 Open Star is a framework that allows for consensus to be achieved around arbitrary information. By default, Open Star has 3 oracles, which are included in this repository, a `COIN`, `NAMESERVICE`, and `DEMO` oracle. You can find these oracles at `./src/classes/oracle/*.ts`. Each oracle has been written in a different style to demonstrate some ways you can create an oracle. `DEMO` is written functionally, `NAMESERVICE` is written as a class, and `COIN` is written in a single object.
