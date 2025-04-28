@@ -75,9 +75,6 @@ export class TheRadicalPartyOracle {
     while (mostCommonState == undefined) {
       await new Promise((res) => setTimeout(res, 100))
       mostCommonState = mode(Object.values(this.peerStates).map(state => state.lastReceive))
-      /*
-      await new Promise((res) => setTimeout(res, 100))
-      */
     }
 
     return mostCommonState

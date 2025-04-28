@@ -1,15 +1,13 @@
 import { type Methods, type PeerStates, KeyManager, OpenStar } from '../..';
 
-type State = { value: number }
 interface DemoMethods extends Methods {
   add: (_args: { value: number }) => void | string;
   subtract: (_args: { value: number }) => void | string;
 }
-type Mempool = Parameters<DemoMethods['add' | 'subtract']>[0][]
 
-const state: State = { value: 0 }
-const peerStates: PeerStates<State> = {}
-const mempool: Mempool = []
+const state = { value: 0 }
+const peerStates: PeerStates<typeof state> = {}
+const mempool: Parameters<DemoMethods['add' | 'subtract']>[0][] = []
 
 const methods: DemoMethods = {
   add: (args: Parameters<DemoMethods['add']>[0]): ReturnType<DemoMethods['add']> => {
@@ -22,7 +20,7 @@ const methods: DemoMethods = {
   }
 }
 
-const startupState = async (): Promise<State> => {
+const startupState = async (): Promise<typeof state> => {
   let mostCommonState
   while (!mostCommonState) {
     await new Promise((res) => setTimeout(res, 100))
@@ -34,7 +32,7 @@ const startupState = async (): Promise<State> => {
 
 const reputationChange = (reputation: { [key: `0x${string}`]: number }): void => {
   for (const _peer in reputation) {
-    const peer = _peer as keyof PeerStates<State>
+    const peer = _peer as keyof typeof peerStates
     const state = peerStates[peer]!
     if (state.reputation === null) continue
     // else if (state.reputation > 0) {} // Reward good peers
@@ -45,7 +43,7 @@ const reputationChange = (reputation: { [key: `0x${string}`]: number }): void =>
 
 const epochTime = 60_000
 
-const start = (keyManager: KeyManager): OpenStar<'DEMO', State, DemoMethods, Mempool> => {
+const start = (keyManager: KeyManager): OpenStar<'DEMO', typeof state, DemoMethods, typeof mempool> => {
   const call = async <T extends keyof DemoMethods>(method: T, args: Parameters<DemoMethods[T]>[0]): Promise<void> => {
     if (!mempool.some(tx => JSON.stringify(tx) === JSON.stringify(args))) { // This should be done via signatures or something similar
       mempool.push(args)
@@ -54,7 +52,7 @@ const start = (keyManager: KeyManager): OpenStar<'DEMO', State, DemoMethods, Mem
     }
   }
 
-  const openStar = new OpenStar<'DEMO', State, DemoMethods, Mempool>('DEMO', { startupState, reputationChange, state, peerStates, call, mempool, methods, keyManager, epochTime })
+  const openStar = new OpenStar<'DEMO', typeof state, DemoMethods, typeof mempool>('DEMO', { startupState, reputationChange, state, peerStates, call, mempool, methods, keyManager, epochTime })
   return openStar
 }
 
