@@ -12,7 +12,7 @@ To run the 3 Open Star examples, execute:
 npx tsx src/client.ts
 ```
 
-If the script stalls at `Announcing`, run a second node. This happens when no peers are online. Avoid starting up 2 nodes at the same time, there is a bug where they are unable to connect.
+If the script stalls at `Announcing`, run a second node. This happens when no peers are online.
 
 ## Library
 Open Star can be imported using `npm install QuixThe2nd/open-star` and used like `src/client.ts` to import and run oracles.
