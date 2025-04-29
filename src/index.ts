@@ -38,6 +38,7 @@ export class OpenStar<OracleName extends string, OracleState extends object, Ora
   connected = false
   readonly name: OracleName
   public readonly oracle: Oracle<OracleState, OracleMethods, OracleMempool>
+  connectHandler?: () => void
 
   constructor(name: string, oracle: Oracle<OracleState, OracleMethods, OracleMempool>) {
     this.name = name as OracleName
@@ -48,6 +49,7 @@ export class OpenStar<OracleName extends string, OracleState extends object, Ora
 
   public readonly onConnect = async (): Promise<void> => {
     if (!this.connected) {
+      if(this.connectHandler) this.connectHandler()
       this.connected = true
       console.log(`[${this.name}] Connected`)
       this.sendState().catch(console.error)
