@@ -15,9 +15,7 @@ const methods = {
       state.pools[token] = {
         openStarLiquidity: `0x${1000000000000000000n.toString(16)}`,
         tokenLiquidity: `0x${1000000000000000000n.toString(16)}`,
-        share: { 
-          "0x": 1
-        }
+        share: { "0x": 1 }
       }
     }
     const pool = state.pools[token]!
