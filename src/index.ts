@@ -134,8 +134,8 @@ export class OpenStar<OracleName extends string, OracleState, OracleMethods exte
   }
 
   private readonly call = <T extends keyof typeof this.oracle.methods>(method: T, args: Parameters<typeof this.oracle.methods[T]>[0]): Promise<string | void> | string | void => this.oracle.methods[method]!(args)
-  private readonly sendState = (): Promise<number> => this.signalling.sendMessage([this.name, 'state', this.oracle.state]);
-  public readonly sendMessage = (message: Message<OracleName, OracleMethods, typeof this.oracle.state>): Promise<number> => this.signalling.sendMessage(message);
+  private readonly sendState = () => this.signalling.sendMessage([this.name, 'state', this.oracle.state]);
+  public readonly sendMessage = (message: Message<OracleName, OracleMethods, typeof this.oracle.state>) => this.signalling.sendMessage(message);
 }
 
 export { KeyManager, Signalling }

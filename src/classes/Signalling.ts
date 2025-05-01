@@ -1,24 +1,23 @@
-import WebSocket, { type RawData } from 'ws'
-import Peer, { type Instance as PeerInstance, type SignalData } from 'simple-peer'
-import WebRTC from '@roamhq/wrtc'
+import WebSocket from 'ws'
+import WRTC from '@roamhq/wrtc'
 import type { Hex } from 'viem';
 import type { KeyManager } from './KeyManager';
 
-type AnnounceMessage = { type: 'announce', from: Hex }
-type InitializeMessage = { type: 'initialize', to: Hex, from: Hex, data: SignalData }
-type FinalizeMessage = { type: 'finalize', to: Hex, from: Hex, data: SignalData }
-type SignallingMessage = AnnounceMessage | InitializeMessage | FinalizeMessage
+const { RTCPeerConnection, RTCSessionDescription, RTCIceCandidate } = WRTC
+
+type SignallingMessage = { announce: true; from: `0x${string}` } | { offer: RTCSessionDescription; from: `0x${string}`; to: `0x${string}` } | { answer: RTCSessionDescription; from: `0x${string}`; to: `0x${string}` } | { iceCandidate: RTCIceCandidate; from: `0x${string}`; to: `0x${string}` };
+type PeerConnection = { conn: RTCPeerConnection; channel: RTCDataChannel; iceCandidates: RTCIceCandidate[] };
+type PeerConnections = { [address: `0x${string}`]: { offered?: PeerConnection; answered?: PeerConnection } };
 
 export class Signalling<Message> {
-  private readonly ws: WebSocket
-  private readonly peers = new Map<string, PeerInstance>();
-  private readonly pendingCandidates = new Map<string, SignalData[]>();
+  ws: WebSocket;
+  peerConnections: PeerConnections = {}
+  messageQueue: SignallingMessage[] = [];
+  connected = false
   private readonly onMessage: (_data: Message, _from: Hex, _callback: (_message: Message) => void) => void
   private readonly onConnect: () => Promise<void>
   private readonly keyManager: KeyManager
   private readonly oracleName: string
-  private readonly connectionAttempts = new Map<string, number>();
-  private readonly MAX_RECONNECT_ATTEMPTS = 3;
 
   constructor(oracle: { name: string, onMessage: (_data: Message, _from: Hex, _callback: (_message: Message) => void) => void, onConnect: () => Promise<void>, keyManager: KeyManager }) {
     this.onMessage = oracle.onMessage
@@ -27,184 +26,141 @@ export class Signalling<Message> {
     this.oracleName = oracle.name
 
     console.log(`[${this.oracleName}] Connecting...`)
-
-    console.log(`wss://rooms.deno.dev/openstar-${oracle.name}`)
     this.ws = new WebSocket(`wss://rooms.deno.dev/openstar-${oracle.name}`);
-    this.ws.on('message', (data) => this.onWsMessage(data));
-    this.ws.on('open', () => {
-      console.log(`[${this.oracleName}] WebSocket connected`)
-      this.announce();
-    });
+
+    this.ws.onopen = () => {
+      console.log(`(1/10) Announcing to ${this.ws.url}`);
+      this.sendWSMessage({ announce: true, from: this.keyManager.getPublicKey() });
+    };
+
+    this.ws.onmessage = (event): void => {
+      const message = JSON.parse(event.data as unknown as string) as SignallingMessage;
+
+      (async () => {
+        if ("announce" in message) {
+          if (this.peerConnections[message.from]) return;
+          console.log(`(2/10) ${message.from} Received announce`);
+          await this.handleAnnounce(message.from);
+        } else if ("offer" in message) {
+          if (typeof message.offer.sdp === "undefined" || message.to !== this.keyManager.getPublicKey()) return;
+          console.log(`(4/10) ${message.from} Received offer`);
+          await this.handleOffer(message.from, message.offer.sdp);
+        } else if ("answer" in message) {
+          if (!this.peerConnections[message.from]?.offered || message.to !== this.keyManager.getPublicKey()) return;
+          console.log(`(7/10) ${message.from} Received answer`);
+          await this.peerConnections[message.from]!.offered!.conn.setRemoteDescription(new RTCSessionDescription({ sdp: message.answer.sdp, type: 'answer' }));
+        } else if ("iceCandidate" in message) {
+          if (message.to !== this.keyManager.getPublicKey()) return;
+          
+          if (this.peerConnections[message.from]?.offered) {
+            console.log(`(8/10) ${message.from} Received ICE candidate for offered connection`);
+            await this.peerConnections[message.from]!.offered!.conn.addIceCandidate(new RTCIceCandidate(message.iceCandidate));
+          } else if (this.peerConnections[message.from]?.answered) {
+            console.log(`(8/10) ${message.from} Received ICE candidate for answered connection`);
+            await this.peerConnections[message.from]!.answered!.conn.addIceCandidate(new RTCIceCandidate(message.iceCandidate));
+          }
+        } else console.error('Unexpected Message:', message)
+      })().catch(console.error)
+    };
+
     this.ws.on('error', (error) => console.error(`[${this.oracleName}] WebSocket error:`, error));
     this.ws.on('close', () => console.log(`[${this.oracleName}] WebSocket closed`));
   }
 
-  private readonly onWsMessage = (data: RawData): void => {
-    const message = JSON.parse(data as unknown as string) as SignallingMessage;
-
-    if (message.from === this.keyManager.getPublicKey()) return;
-    else if (message.type === 'announce' && message.from !== this.keyManager.getPublicKey()) this.handleAnnounce(message);
-    else if (message.type === 'initialize' && message.to === this.keyManager.getPublicKey()) this.handleInitialize(message);
-    else if (message.type === 'finalize' && message.to === this.keyManager.getPublicKey()) this.handleFinalize(message);
+  private sendWSMessage(message: SignallingMessage): void {
+    this.messageQueue.push(message);
+    if (this.ws.readyState) this.ws.send(JSON.stringify(message));
+    else {
+      this.ws.addEventListener("open", () => {
+        this.ws.send(JSON.stringify(message));
+      });
+    }
   }
 
-  private readonly send = (message: SignallingMessage): void => {
-    if (this.ws.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(message));
-  }
+  private createPeerConnection(from: `0x${string}`, role: 'offered' | 'answered'): PeerConnection {
+    const conn = new RTCPeerConnection();
+    const channel = conn.createDataChannel("chat", { negotiated: true, id: 0 });
+    const iceCandidates: RTCIceCandidate[] = [];
 
-  private readonly shouldInitiate = (peerAddress: Hex): boolean => {
-    return this.keyManager.getPublicKey().toLowerCase() < peerAddress.toLowerCase();
-  }
-
-  private readonly createPeer = (peerAddress: Hex, initiator: boolean): PeerInstance => {
-    this.cleanupPeer(peerAddress);
-    const effectiveInitiator = initiator && this.shouldInitiate(peerAddress);
-    
-    console.log(`[${this.oracleName}] Creating peer connection with ${peerAddress}, initiator: ${effectiveInitiator}`);
-    
-    const peerOptions: Peer.Options = {
-      initiator: effectiveInitiator,
-      wrtc: WebRTC,
-      trickle: true,
-      config: {
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:global.stun.twilio.com:3478' }
-        ],
-        iceTransportPolicy: 'all'
+    channel.onopen = () => {
+      if (!this.connected) {
+        this.connected = true;
+        this.onConnect().catch(console.error);
       }
     };
-    
-    const peer: PeerInstance = new Peer(peerOptions);
-    this.peers.set(peerAddress, peer);
-    
-    // Initialize connection attempts counter if needed
-    if (!this.connectionAttempts.has(peerAddress)) this.connectionAttempts.set(peerAddress, 0);
 
-    peer.on('connect', () => {
-      console.log(`[${this.oracleName}] Connected to ${peerAddress}`);
-      this.connectionAttempts.set(peerAddress, 0);
-      this.onConnect().catch(console.error);
-    });
-
-    peer.on('error', (err) => {
-      console.log(`[${this.oracleName}] Connection error with ${peerAddress}:`, err);
-      this.handlePeerError(peerAddress);
-    });
-
-    peer.on('close', () => {
-      console.log(`[${this.oracleName}] Connection closed with ${peerAddress}`);
-      this.cleanupPeer(peerAddress);
-    });
-
-    peer.on('signal', (data: SignalData) => {
-      console.log(`[${this.oracleName}] Signaling to ${peerAddress}, data type: ${data.type || 'candidate'}`);
-      this.send({ type: effectiveInitiator ? 'initialize' : 'finalize', to: peerAddress, from: this.keyManager.getPublicKey(), data });
-    });
-
-    peer.on('data', (data: string): void => {
-      const { signature, message } = JSON.parse(data) as { signature: Hex, message: Message };
-      this.keyManager.verify(signature, JSON.stringify(message), peerAddress)
-        .then(async (status) => {
-          if (!status) return console.warn(`[${this.oracleName}] Signature verification failed for message from ${peerAddress}`);
-          const signature = await this.keyManager.sign(JSON.stringify(message));
-          this.onMessage(message, peerAddress, (response) => {
-            if (peer.connected) peer.send(JSON.stringify({ message: response, signature }));
-          });
-        })
-        .catch(console.error);
-    });
-
-    const pendingCandidates = this.pendingCandidates.get(peerAddress);
-    if (pendingCandidates && pendingCandidates.length > 0) {
-      console.log(`[${this.oracleName}] Applying ${pendingCandidates.length} pending candidates for ${peerAddress}`);
-      pendingCandidates.forEach(candidate => peer.signal(candidate));
-      this.pendingCandidates.delete(peerAddress);
-    }
-
-    return peer;
-  }
-
-  private readonly cleanupPeer = (peerAddress: Hex): void => {
-    const existingPeer = this.peers.get(peerAddress);
-    if (existingPeer) {
-      existingPeer.removeAllListeners();
-      existingPeer.destroy();
-      this.peers.delete(peerAddress);
-    }
-  }
-
-  private readonly handlePeerError = (peerAddress: Hex): void => {
-    this.cleanupPeer(peerAddress);
-
-    const attempts = (this.connectionAttempts.get(peerAddress) || 0) + 1;
-    this.connectionAttempts.set(peerAddress, attempts);
-    
-    if (attempts <= this.MAX_RECONNECT_ATTEMPTS) {
-      console.log(`[${this.oracleName}] Retrying connection to ${peerAddress}, attempt ${attempts}/${this.MAX_RECONNECT_ATTEMPTS}`);
-      setTimeout(() => this.announce(), 1000 * attempts); // Backoff with each attempt
-    } else {
-      console.log(`[${this.oracleName}] Max reconnection attempts reached for ${peerAddress}`);
-      this.connectionAttempts.delete(peerAddress);
-      this.pendingCandidates.delete(peerAddress);
-    }
-  }
-
-  private readonly announce = (): void => {
-    console.log(`[${this.oracleName}] 1. Announcing presence`);
-    this.send({ type: 'announce', from: this.keyManager.getPublicKey() });
-  }
-
-  private readonly handleAnnounce = (message: AnnounceMessage): void => {
-    const peerAddress = message.from;
-    console.log(`[${this.oracleName}] 2. Received announce from ${peerAddress}`);
-    
-    if (!this.shouldInitiate(peerAddress)) return console.log(`[${this.oracleName}] 2b. We should NOT be the initiator for ${peerAddress}, waiting for initialize`)
-    console.log(`[${this.oracleName}] 2a. We should be the initiator for ${peerAddress}, creating peer`);
-    this.createPeer(peerAddress, true);
-  }
-
-  private readonly handleInitialize = (message: InitializeMessage): void => {
-    const peerAddress = message.from;
-    console.log(`[${this.oracleName}] 3. Received initialize (offer) from ${peerAddress}`);
-
-    if (this.shouldInitiate(peerAddress)) console.log(`[${this.oracleName}] Warning: Received initialize but we should be the initiator for ${peerAddress}`);
-    
-    let peer = this.peers.get(peerAddress);
-    if (!peer) {
-      console.log(`[${this.oracleName}] 3a. Creating non-initiator peer for ${peerAddress}`);
-      peer = this.createPeer(peerAddress, false);
-    }
-
-    console.log(`[${this.oracleName}] 3b. Applying offer from ${peerAddress}`);
-    peer.signal(message.data);
-  }
-
-  private readonly handleFinalize = (message: FinalizeMessage): void => {
-    const peerAddress = message.from;
-    const dataType = message.data.type || 'candidate';
-    console.log(`[${this.oracleName}] 4. Received finalize (${dataType}) from ${peerAddress}`);
-    
-    const peer = this.peers.get(peerAddress);
-    if (peer) peer.signal(message.data);
-    else {
-      console.log(`[${this.oracleName}] 4a. Storing ${dataType} for future peer ${peerAddress}`);
-      if (!this.pendingCandidates.has(peerAddress)) this.pendingCandidates.set(peerAddress, []);
-      this.pendingCandidates.get(peerAddress)!.push(message.data);
-    }
-  }
-
-  public readonly sendMessage = async (message: Message): Promise<number> => {
-    const signature = await this.keyManager.sign(JSON.stringify(message));
-    
-    let sentCount = 0;
-    this.peers.forEach((peer, address) => {
-      if (!peer.connected) return console.warn(`[${this.oracleName}] Peer ${address} not connected, message not sent`);
-      else {
-        peer.send(JSON.stringify({ message, signature }));
-        sentCount++;
+    channel.onmessage = (e) => {
+      console.log(`(10/10) Received WebRTC message`);
+      const data = JSON.parse(e.data as string) as { message: Message, from: `0x${string}`, signature: `0x${string}` };
+      if (data.message && data.signature) {
+        const from = channel === this.peerConnections[data.from]?.offered?.channel ? data.from : Object.keys(this.peerConnections).find(addr => channel === this.peerConnections[addr as `0x${string}`]?.offered?.channel || channel === this.peerConnections[addr as `0x${string}`]?.answered?.channel) as Hex;
+        
+        const sendResponse = (responseMessage: Message) => {
+          channel.send(JSON.stringify({ 
+            message: responseMessage, 
+            signature: this.keyManager.sign(JSON.stringify(responseMessage))
+          }));
+        };
+        
+        this.onMessage(data.message, from, sendResponse);
       }
-    });
-    return sentCount;
+    };
+
+    conn.onicecandidate = (event) => {
+      if (event.candidate) {
+        iceCandidates.push(event.candidate);
+        console.log(`(6/10) ${from} Sending ICE candidate for ${role} connection`);
+        this.sendWSMessage({ 
+          iceCandidate: event.candidate, 
+          to: from, 
+          from: this.keyManager.getPublicKey() 
+        });
+      }
+    };
+
+    return { conn, channel, iceCandidates };
+  }
+
+  private async handleAnnounce(from: `0x${string}`): Promise<void> {
+    const conn = this.createPeerConnection(from, 'offered');
+    this.peerConnections[from] = { offered: conn };
+    const offer = new RTCSessionDescription(await conn.conn.createOffer());
+    await conn.conn.setLocalDescription(offer);
+    console.log(`(3/10) ${from} Sending offer`);
+    this.sendWSMessage({ offer, to: from, from: this.keyManager.getPublicKey() });
+  }
+
+  private async handleOffer(from: `0x${string}`, sdp: string): Promise<void> {
+    const remoteDesc = new RTCSessionDescription({ type: 'offer', sdp });
+    if (!this.peerConnections[from]) this.peerConnections[from] = {};
+    this.peerConnections[from].answered = this.createPeerConnection(from, 'answered');
+    if (!this.peerConnections[from].answered) throw new Error("Unreachable code reached");
+    await this.peerConnections[from].answered.conn.setRemoteDescription(remoteDesc);
+    const answer = new RTCSessionDescription(await this.peerConnections[from].answered.conn.createAnswer());
+    await this.peerConnections[from].answered.conn.setLocalDescription(answer);
+    console.log(`(5/10) ${from} Announcing answer`);
+    this.sendWSMessage({ answer, to: from, from: this.keyManager.getPublicKey() });
+  }
+
+  public async sendMessage(message: Message): Promise<void> {
+    const signature = await this.keyManager.sign(JSON.stringify(message));
+    const addresses = Object.keys(this.peerConnections) as (keyof PeerConnections)[];
+    for (let i = 0; i < addresses.length; i++) {
+      const peer = addresses[i]!
+      const peerConnection = this.peerConnections[peer]!;
+      const channel = peerConnection.offered?.channel || peerConnection.answered?.channel;
+      
+      if (!channel) continue;
+      
+      if (channel.readyState === 'connecting') {
+        channel.addEventListener('open', () => {
+          channel.send(JSON.stringify({ message, signature }));
+        });
+      } else if (channel.readyState === 'open') {
+        channel.send(JSON.stringify({ message, signature }));
+      }
+    }
   }
 }
+
+export default Signalling;
