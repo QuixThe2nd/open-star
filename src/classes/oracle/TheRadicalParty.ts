@@ -1,7 +1,7 @@
-import { parseEther, type Hex } from 'viem';
+import { parseEther } from 'viem';
 import { KeyManager, OpenStar, type Oracle, type PeerStates, mode } from '../..';
 
-const state: { laws: string[], balances: { [pubKey: string]: Hex } } = { laws: [], balances: {} }
+const state: { laws: string[], balances: { [pubKey: string]: `0x${string}` } } = { laws: [], balances: {} }
 const methods = {
   mint(args: { to: `0x${string}`, amount: `0x${string}` }) {
     state.balances[args.to] = `0x${(BigInt(state.balances[args.to] ?? 0) + BigInt(args.amount)).toString(16)}`

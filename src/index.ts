@@ -1,4 +1,3 @@
-import type { Hex } from "viem";
 import { KeyManager } from "./classes/KeyManager";
 import { Signalling } from "./classes/Signalling";
 
@@ -75,7 +74,7 @@ export class OpenStar<OracleName extends string, OracleState, OracleMethods exte
     }
   }
 
-  public readonly onMessage = (message: Message<OracleName, OracleMethods, typeof this.oracle.state> | PingPongMessage, from: Hex, callback: (_message: Message<OracleName, OracleMethods, typeof this.oracle.state> | PingPongMessage) => void): void => {
+  public readonly onMessage = (message: Message<OracleName, OracleMethods, typeof this.oracle.state> | PingPongMessage, from: `0x${string}`, callback: (_message: Message<OracleName, OracleMethods, typeof this.oracle.state> | PingPongMessage) => void): void => {
     console.log(`[${message[0].toUpperCase()}] Received message: ${message[1]} from ${from.slice(0, 8)}...`)
     if (message[0] === 'ping') callback(['pong']);
     else if (message[0] === 'pong') console.log('pong')

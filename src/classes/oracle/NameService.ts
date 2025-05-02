@@ -1,8 +1,8 @@
-import { parseEther, type Hex } from "viem";
+import { parseEther } from "viem";
 import { mode, sortObjectByKeys, type PeerStates, OpenStar } from "../..";
 import { KeyManager } from "../KeyManager";
 
-type State = { [pubKey: Hex]: { hostnames: `${string}.star`[], balance: `0x${string}` } }
+type State = { [pubKey: `0x${string}`]: { hostnames: `${string}.star`[], balance: `0x${string}` } }
 
 
 class NameServiceOracle {
@@ -14,17 +14,17 @@ class NameServiceOracle {
   }
 
   readonly methods = {
-    mint: (args: { to: Hex, amount: `0x${string}` }): void | string => {
+    mint: (args: { to: `0x${string}`, amount: `0x${string}` }): void | string => {
       this.state[args.to] ??= { hostnames: [], balance: `0x0` }
       this.state[args.to]!.balance = `0x${(BigInt(this.state[args.to]!.balance) + BigInt(args.amount)).toString(16)}`
       this.state = sortObjectByKeys(this.state)
     },
-    burn: (args: { to: Hex, amount: `0x${string}` }): void | string => {
+    burn: (args: { to: `0x${string}`, amount: `0x${string}` }): void | string => {
       if (!this.state[args.to]) return 'Address does not exist'
       if (this.state[args.to]!.balance < args.amount) this.state[args.to]!.balance = `0x0`
       else this.state[args.to]!.balance = `0x${(BigInt(this.state[args.to]!.balance) - BigInt(args.amount)).toString(16)}`
     },
-    register: async (args: { from: Hex, hostname: `${string}.star`, signature: Hex, time: number }): Promise<void | string> => {
+    register: async (args: { from: `0x${string}`, hostname: `${string}.star`, signature: `0x${string}`, time: number }): Promise<void | string> => {
       if (!this.state[args.from]) return 'No balance'
       if (BigInt(this.state[args.from]!.balance) < parseEther('1')) return 'Balance too low'
       if (!await this.openStar.keyManager.verify(args.signature, JSON.stringify({ from: args.from, hostname: args.hostname }), args.from)) return 'Invalid signature'

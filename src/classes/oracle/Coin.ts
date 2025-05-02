@@ -1,7 +1,7 @@
-import { parseEther, type Hex } from 'viem';
+import { parseEther } from '/Users/parsa/GitHub/viem/src';
 import { KeyManager, mode, OpenStar, sortObjectByKeys, type PeerStates } from '../..';
 
-type State = { [pubKey: string]: Hex }
+type State = { [pubKey: string]: `0x${string}` }
 
 function calculateBlockYield(epochTime: number, state: State, peers: { [key: `0x${string}`]: { reputation: number }}): number {
   let supply = 0n
