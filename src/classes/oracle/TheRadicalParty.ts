@@ -1,7 +1,8 @@
 import { parseEther } from 'viem';
 import { KeyManager, OpenStar, type Oracle, type PeerStates, mode } from '../..';
+import type { ORC20State } from '../../types';
 
-const state: { laws: string[], balances: { [pubKey: string]: `0x${string}` } } = { laws: [], balances: {} }
+const state: ORC20State & { laws: string[] } = { laws: [], balances: {} }
 const methods = {
   mint(args: { to: `0x${string}`, amount: `0x${string}` }) {
     state.balances[args.to] = `0x${(BigInt(state.balances[args.to] ?? 0) + BigInt(args.amount)).toString(16)}`
@@ -43,6 +44,6 @@ export default function start(keyManager: KeyManager) {
     }
     methods.mint({ to: keyManager.getPublicKey(), amount: `0x${(state.balances[keyManager.getPublicKey()] ? BigInt(Math.floor(Number(state.balances[keyManager.getPublicKey()])*blockYield)).toString(16) : parseEther('1')).toString(16)}` })
   }
-  const oracle: Oracle<typeof state, typeof methods> = { epochTime: 15_000, startupState, reputationChange, state, methods, keyManager, transactionToID }
+  const oracle: Oracle<typeof state, typeof methods> = { epochTime: 15_000, ORCs: [ 20 ], startupState, reputationChange, state, methods, keyManager, transactionToID }
   return new OpenStar('THERADICALPARTY', oracle)
 }

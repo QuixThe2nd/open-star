@@ -5,18 +5,19 @@ export type Methods<T extends object = object> = Record<string, (_args: T) => Pr
 export type Message<OracleName extends string, OracleMethods extends Methods<any>, SerializedState> = { [K in keyof OracleMethods]: [OracleName, 'call', K & string, Parameters<OracleMethods[K]>[0]] }[keyof OracleMethods] | [OracleName, 'state', SerializedState];
 export type PeerStates<State> = { [from: `0x${string}`]: { lastSend: null | State; lastReceive: null | State; reputation: number | null } }
 export type Oracle<State, OracleMethods extends Methods<any>> = {
-  startupState: (_peerStates: State[]) => Promise<State | undefined> | State | undefined,
+  startupState: (_peerStates: State[]) => Promise<State> | State,
   reputationChange: (_peer: { [key: `0x${string}`]: { reputation: number, state: State }}, _epochTime: number) => Promise<void> | void,
   state: State,
   methods: OracleMethods
   keyManager: KeyManager
   epochTime: number
   transactionToID: <T extends keyof OracleMethods>(_method: T, _args: Parameters<OracleMethods[T]>[0]) => string
+  ORCs: 20[]
 }
 export type PingPongMessage = ['ping' | 'pong'];
 type MempoolItem<M extends Methods<any>> = { method: keyof M, args: Parameters<M[keyof M]>[0] }
 
-export const mode = <State>(arr: State[]): State | undefined => arr.toSorted((a,b) => arr.filter(v => v===a).length - arr.filter(v => v===b).length).pop();
+export const mode = <State>(arr: State[]): State => arr.toSorted((a,b) => arr.filter(v => v===a).length - arr.filter(v => v===b).length).pop()!;
 
 export function sortObjectByKeys<T extends object>(obj: T): T {
   const sortedObj = {} as T;
@@ -58,11 +59,7 @@ export class OpenStar<OracleName extends string, OracleState, OracleMethods exte
         await new Promise((res) => setTimeout(res, 100))
         peerStates = Object.values(this.getPeerStates()).map(state => state.lastReceive).filter(state => state !== null)
       }
-      let state;
-      while (!state) {
-        state = await this.oracle.startupState(peerStates)
-      }
-      this.oracle.state = state
+      this.oracle.state = await this.oracle.startupState(peerStates)
       this.sendState().catch(console.error)
 
       const startTime = +new Date();

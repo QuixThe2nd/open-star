@@ -205,7 +205,6 @@ export class Signalling<Message> {
   }
 
   public async sendMessage(message: Message): Promise<void> {
-    console.log('sending message', message)
     const signature = await this.keyManager.sign(JSON.stringify(message));
     const addresses = Object.keys(this.peerConnections) as (keyof PeerConnections)[];
     for (let i = 0; i < addresses.length; i++) {
