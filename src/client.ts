@@ -3,7 +3,7 @@ import startNameServiceOracle from "./classes/oracle/NameService";
 import startDemoOracle from "./classes/oracle/Demo";
 import { KeyManager } from './classes/KeyManager';
 
-const keyManager = new KeyManager(Math.random())
+const keyManager = await KeyManager.init(Math.random())
 
 startCoinOracle(keyManager)
 startNameServiceOracle(keyManager)
