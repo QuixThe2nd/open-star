@@ -1,18 +1,22 @@
 import { KeyManager } from "./classes/KeyManager";
 import { Signalling } from "./classes/Signalling";
+import type { MethodReturn } from "./types";
 
-export type Methods<T extends object = object> = Record<string, (_args: T) => Promise<string | void> | string | void>
-export type Message<OracleName extends string, OracleMethods extends Methods<any>, SerializedState> = { [K in keyof OracleMethods]: [OracleName, 'call', K & string, Parameters<OracleMethods[K]>[0]] }[keyof OracleMethods] | [OracleName, 'state', SerializedState];
+export type Methods<T extends Record<string, (arg: any) => MethodReturn>> = { [K in keyof T]: T[K] extends (arg: infer A) => MethodReturn ? (arg: A) => MethodReturn : never }
+export type Message<OracleName extends string, OracleMethods extends Record<string, (arg: any) => MethodReturn>, SerializedState> = { [K in keyof OracleMethods]: [OracleName, 'call', K & string, Parameters<OracleMethods[K]>[0]] }[keyof OracleMethods] | [OracleName, 'state', SerializedState];
 export type PeerStates<State> = { [from: `0x${string}`]: { lastSend: null | State; lastReceive: null | State; reputation: number | null } }
-export type Oracle<State, OracleMethods extends Methods<any>> = {
-  startupState: (_peerStates: State[]) => Promise<State> | State,
-  reputationChange: (_peer: { [key: `0x${string}`]: { reputation: number, state: State }}, _epochTime: number) => Promise<void> | void,
-  state: State,
+export type Oracle<OracleState, OracleMethods extends Record<string, (arg: any) => MethodReturn>> = {
+  startupState: (_peerStates: OracleState[]) => Promise<OracleState> | OracleState,
+  reputationChange: (_peer: { [key: `0x${string}`]: { reputation: number, state: OracleState }}, _epochTime: number) => Promise<void> | void,
+  state: State<OracleState>,
   methods: OracleMethods
+  methodDescriptions: { [K in keyof OracleMethods]: Parameters<OracleMethods[keyof OracleMethods]>[0] }
   keyManager: KeyManager
   epochTime: number
   transactionToID: <T extends keyof OracleMethods>(_method: T, _args: Parameters<OracleMethods[T]>[0]) => string
-  ORCs: 20[]
+  ORC20?: {
+    ticker: string
+  }
 }
 export type PingPongMessage = ['ping' | 'pong'];
 type MempoolItem<M extends Methods<any>> = { method: keyof M, args: Parameters<M[keyof M]>[0] }
@@ -27,15 +31,28 @@ export function sortObjectByKeys<T extends object>(obj: T): T {
   return sortedObj;
 }
 
-export class OpenStar<OracleName extends string, OracleState, OracleMethods extends Methods<any>> {
-  public readonly signalling: Signalling<Message<OracleName, OracleMethods, typeof this.oracle.state> | PingPongMessage>
+export class State<OracleState> {
+  private _value: OracleState
+  constructor(state: OracleState) {
+    this._value = state
+  }
+  get value() {
+    return this._value
+  }
+  set value(state: OracleState) {
+    this._value = state
+  }
+}
+
+export class OpenStar<OracleName extends string, OracleState, OracleMethods extends Record<string, (arg: any) => MethodReturn>> {
+  public readonly signalling: Signalling<Message<OracleName, OracleMethods, OracleState> | PingPongMessage>
   private epochCount = -1
   readonly keyManager: KeyManager
   private lastEpochState: string = ''
   connected = false
   readonly name: OracleName
   public readonly oracle: Oracle<OracleState, OracleMethods>
-  private readonly peerStates: PeerStates<typeof this.oracle.state> = {}
+  private readonly _peerStates: PeerStates<OracleState> = {}
   private mempool: Record<string, MempoolItem<OracleMethods>> = {} as typeof this.mempool
   connectHandler?: () => void
 
@@ -43,10 +60,16 @@ export class OpenStar<OracleName extends string, OracleState, OracleMethods exte
     this.name = name
     this.keyManager = oracle.keyManager
     this.oracle = oracle
-    this.signalling = new Signalling<Message<OracleName, OracleMethods, typeof this.oracle.state> | PingPongMessage>(this)
+    this.signalling = new Signalling<Message<OracleName, OracleMethods, OracleState> | PingPongMessage>(this)
   }
 
-  public getPeerStates = (): PeerStates<typeof this.oracle.state> => this.peerStates
+  get peerStates() {
+    return this._peerStates
+  }
+
+  get peerCount() {
+    return Object.keys(this._peerStates).length
+  }
 
   public readonly onConnect = async (): Promise<void> => {
     if (!this.connected) {
@@ -57,9 +80,9 @@ export class OpenStar<OracleName extends string, OracleState, OracleMethods exte
       let peerStates: OracleState[] = []
       while (!peerStates.length) {
         await new Promise((res) => setTimeout(res, 100))
-        peerStates = Object.values(this.getPeerStates()).map(state => state.lastReceive).filter(state => state !== null)
+        peerStates = Object.values(this.peerStates).map(state => state.lastReceive).filter(state => state !== null)
       }
-      this.oracle.state = await this.oracle.startupState(peerStates)
+      this.oracle.state.value = await this.oracle.startupState(peerStates)
       this.sendState().catch(console.error)
 
       const startTime = +new Date();
@@ -71,7 +94,7 @@ export class OpenStar<OracleName extends string, OracleState, OracleMethods exte
     }
   }
 
-  public readonly onMessage = (message: Message<OracleName, OracleMethods, typeof this.oracle.state> | PingPongMessage, from: `0x${string}`, callback: (_message: Message<OracleName, OracleMethods, typeof this.oracle.state> | PingPongMessage) => void): void => {
+  public readonly onMessage = (message: Message<OracleName, OracleMethods, OracleState> | PingPongMessage, from: `0x${string}`, callback: (_message: Message<OracleName, OracleMethods, OracleState> | PingPongMessage) => void): void => {
     console.log(`[${message[0].toUpperCase()}] Received message: ${message[1]} from ${from.slice(0, 8)}...`)
     if (message[0] === 'ping') callback(['pong']);
     else if (message[0] === 'pong') console.log('pong')
@@ -80,7 +103,7 @@ export class OpenStar<OracleName extends string, OracleState, OracleMethods exte
         this.peerStates[from] ??= { lastReceive: null, lastSend: null, reputation: 0 }
         this.peerStates[from].lastReceive = message[2]
 
-        const state = this.oracle.state
+        const state = this.oracle.state.value
         if (JSON.stringify(state) !== JSON.stringify(this.peerStates[from].lastSend)) {
           this.peerStates[from].lastSend = state
           callback([message[0], 'state', state])
@@ -92,10 +115,10 @@ export class OpenStar<OracleName extends string, OracleState, OracleMethods exte
       } else if (message[1] === 'call') {
         const id = this.oracle.transactionToID(message[2], message[3])
         if ('time' in message[3] && message[3].time < +new Date() - this.oracle.epochTime) return console.error('Transaction too old.')
-        if (id in this.mempool) return console.error('Transaction already in mempool.')
+        if (Object.keys(this.mempool).includes(id)) return console.error('Transaction already in mempool.')
         this.mempool[id] = { method: message[2], args: message[3] }
         this.sendMessage([ this.name, 'call', message[2], message[3] ]).catch(console.error)
-        Promise.resolve(this.call(message[2], message[3])).catch(console.error)
+        Promise.resolve(this.call(message[2], message[3])).then(() => console.log(this.oracle.state.value)).catch(console.error)
       }
     }
   }
@@ -104,12 +127,12 @@ export class OpenStar<OracleName extends string, OracleState, OracleMethods exte
     console.log(`[${this.name}] Epoch:`, new Date().toISOString());
     this.epochCount++
 
-    const state = this.oracle.state
+    const state = this.oracle.state.value
     if (JSON.stringify(state) !== this.lastEpochState) {
       const peers: { [key: `0x${string}`]: { reputation: number, state: OracleState }} = {}
       let netReputation = 0;
       for (const _peer in this.peerStates) {
-        const peer = _peer as keyof PeerStates<typeof this.oracle.state>
+        const peer = _peer as keyof PeerStates<OracleState>
         const state = this.peerStates[peer]!
         if (state.reputation === null) {
           delete this.peerStates[peer]
@@ -122,16 +145,16 @@ export class OpenStar<OracleName extends string, OracleState, OracleMethods exte
       if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
       await this.oracle.reputationChange(peers, this.oracle.epochTime)
       this.mempool = {} as typeof this.mempool
-      console.log(`[${this.name}]`, this.oracle.state)
-      this.lastEpochState = JSON.stringify(this.oracle.state)
+      console.log(`[${this.name}]`, this.oracle.state.value)
+      this.lastEpochState = JSON.stringify(this.oracle.state.value)
     }
 
     this.sendState().catch(console.error)
   }
 
   private readonly call = <T extends keyof typeof this.oracle.methods>(method: T, args: Parameters<typeof this.oracle.methods[T]>[0]): Promise<string | void> | string | void => this.oracle.methods[method]!(args)
-  private readonly sendState = () => this.signalling.sendMessage([this.name, 'state', this.oracle.state]);
-  public readonly sendMessage = (message: Message<OracleName, OracleMethods, typeof this.oracle.state>) => this.signalling.sendMessage(message);
+  private readonly sendState = () => this.signalling.sendMessage([this.name, 'state', this.oracle.state.value]);
+  public readonly sendMessage = (message: Message<OracleName, OracleMethods, OracleState>) => this.signalling.sendMessage(message);
 }
 
 export { KeyManager, Signalling }
