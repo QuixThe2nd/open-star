@@ -12,6 +12,11 @@ To run the 3 Open Star examples, execute:
 npx tsx src/client.ts
 ```
 
+To build, use:
+```sh
+bun build.ts
+```
+
 If the script stalls at `Announcing`, run a second node. This happens when no peers are online.
 
 ## Library
