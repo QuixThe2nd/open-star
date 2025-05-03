@@ -95,7 +95,7 @@ export class Signalling<Message> {
     }
 
     
-    this.ws.onerror = (error) => console.error(`[${this.oracleName}] WebSocket error:`, error);
+    this.ws.onerror = (error: Event) => console.error(`[${this.oracleName}] WebSocket error:`, error)
     this.ws.onclose = () => console.log(`[${this.oracleName}] WebSocket closed`);
   }
 
