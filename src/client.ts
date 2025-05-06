@@ -1,10 +1,13 @@
-import startCoinOracle from './classes/oracle/Coin';
-import startNameServiceOracle from "./classes/oracle/NameService";
-import startDemoOracle from "./classes/oracle/Demo";
-import { KeyManager } from './classes/KeyManager';
+import { KeyManager } from './classes/KeyManager'
+import coinOracle from './oracles/Coin'
+import nameServiceOracle from './oracles/NameService'
+import demoOracle from './oracles/Demo'
+import theRadicalParty from './oracles/TheRadicalParty'
+import { start } from './oracle'
 
-const keyManager = await KeyManager.init(Math.random())
+const keyManager = await KeyManager.init('client')
 
-startCoinOracle(keyManager)
-startNameServiceOracle(keyManager)
-startDemoOracle(keyManager)
+start(coinOracle, keyManager)
+start(nameServiceOracle, keyManager)
+start(demoOracle, keyManager)
+start(theRadicalParty, keyManager)
