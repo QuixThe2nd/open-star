@@ -1,0 +1,62 @@
+import { StateManager } from "../classes/StateManager"
+import type { ORC20Oracle } from "../oracle/ORC20"
+import type { NonEmptyArray } from "../types/generic"
+import type { Oracle } from "../types/Oracle"
+import type { ORC20State } from "../types/ORC20"
+import { mode, parseEther } from "../utils"
+
+const state = new StateManager<ORC20State & { laws: string[] }>({ laws: [], balances: {} })
+const methods = {
+  submitLaw(args: { value: string, time: number }): string | void {
+    if (args.value.length === 0) return 'Law is empty'
+    if (args.value.length > 280) return 'Law must be under 280 characters'
+    state.value.laws.push(args.value)
+  },
+  mint(args: { to: `0x${string}`, amount: `0x${string}` }) {
+    state.value.balances[args.to] = (BigInt(state.value.balances[args.to] ?? 0) + BigInt(args.amount)).toHex()
+  },
+  burn(args: { to: `0x${string}`, amount: `0x${string}` }): string | void {
+    const balance = state.value.balances[args.to]
+    if (balance === undefined) return 'Address does not exist'
+    if (BigInt(balance) < BigInt(args.amount)) state.value.balances[args.to] = `0x0`
+    else state.value.balances[args.to] = (BigInt(state.value.balances[args.to] ?? 0) - BigInt(args.amount)).toHex()
+  },
+}
+const methodDescriptions: { [K in keyof typeof methods]: Parameters<typeof methods[keyof typeof methods]>[0] } = {
+  mint: { to: `0x`, amount: `0x` },
+  burn: { to: `0x`, amount: `0x` },
+  submitLaw: { value: '', time: 0 }
+}
+const startupState = (peerStates: NonEmptyArray<typeof state.value>) => mode(peerStates)
+const transactionToID = <T extends keyof typeof methods>(method: T, args: Parameters<typeof methods[T]>[0]) => `${method}-${JSON.stringify(args)}`
+const ORC20 = { ticker: "RAD" }
+
+function calculateBlockYield(epochTime: number): number {
+  const stakingRate = openStar.stakingRate()
+  const stakingYield = 0.05 * (1 - stakingRate * 0.5) / stakingRate * 100
+  return Math.pow(stakingYield, 1 / ((365 * 24 * 60 * 60 * 1000) / epochTime)) - 1;
+}
+
+function reputationChange(peers: Record<`0x${string}`, { reputation: number }>, epochTime: number) {
+  const blockYield = calculateBlockYield(epochTime)
+  peers.forEach((peer, { reputation }) => {
+    const balance = state.value.balances[peer]
+    if (reputation > 0) {
+      console.log('[COIN] Rewarding', peer.slice(0, 8) + '...')
+      methods.mint({ to: peer, amount: (balance !== undefined ? BigInt(Math.floor(Number(balance)*blockYield)) : parseEther(1)).toHex() });
+    } else if (reputation < 0 && balance !== undefined) {
+      console.log('[COIN] Slashing', peer.slice(0, 8) + '...')
+      methods.burn({ to: peer, amount: ((BigInt(balance)*9n)/10n).toHex() })
+    }
+  })
+  methods.mint({ to: openStar.keyManager.address, amount: (state.value.balances[openStar.keyManager.address] !== undefined ? BigInt(Math.floor(Number(state.value.balances[openStar.keyManager.address])*blockYield)) : parseEther(1)).toHex() })
+}
+
+
+let openStar: ORC20Oracle<'THERADICALPARTY', typeof state.value, typeof methods>
+const setOpenStar = (newOpenStar: ORC20Oracle<'THERADICALPARTY', typeof state.value, typeof methods>) => {
+  openStar = newOpenStar
+}
+
+const oracle: Oracle<'THERADICALPARTY', typeof state.value, typeof methods> = { name: 'THERADICALPARTY', epochTime: 15_000, ORC20, startupState, reputationChange, state, methods, methodDescriptions, transactionToID, setOpenStar }
+export default oracle
