@@ -1,0 +1,129 @@
+import { Signalling } from "../classes/Signalling";
+import type { KeyManager } from "../classes/KeyManager";
+import type { NonEmptyArray } from "../types/generic";
+import type { MethodReturn, PingPongMessage, Oracle, PeerStates, MempoolItem, Message } from "../types/Oracle";
+import type { ORC20MethodArgs } from "../types/ORC20";
+
+export class OpenStar<OracleName extends string, OracleState, OracleMethods extends Record<string, (arg: any) => MethodReturn>> {
+  public readonly signalling: Signalling<Message<OracleName, OracleMethods, OracleState> | PingPongMessage>
+  private epochCount = -1
+  readonly keyManager: KeyManager
+  private lastEpochState = ''
+  connected = false
+  readonly name: OracleName
+  public readonly oracle: Oracle<OracleName, OracleState, OracleMethods>
+  public readonly _peerStates: PeerStates<OracleState> = {}
+  private mempool: Record<string, MempoolItem<OracleMethods>> = {}
+  connectHandler?: () => void
+
+  constructor(oracle: Oracle<OracleName, OracleState, OracleMethods>, keyManager: KeyManager) {
+    this.name = oracle.name
+    this.keyManager = keyManager
+    this.oracle = oracle
+    this.signalling = new Signalling<Message<OracleName, OracleMethods, OracleState> | PingPongMessage>(this)
+    if ('setOpenStar' in oracle) this.initializeExtended()
+  }
+
+  protected initializeExtended(): void {
+    if (this.oracle.setOpenStar) this.oracle.setOpenStar(this)
+  }
+
+  get peerStates() {
+    return this._peerStates
+  }
+
+  get peerCount() {
+    return Object.keys(this._peerStates).length
+  }
+
+  public readonly onConnect = async (): Promise<void> => {
+    if (!this.connected) {
+      if (this.connectHandler !== undefined) this.connectHandler()
+      this.connected = true
+      console.log(`[${this.name}] Connected`)
+      this.sendState().catch(console.error)
+      let peerStates: OracleState[] = []
+      while (peerStates.length === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 100))
+        peerStates = Object.values(this.peerStates).map(state => state.lastReceive).filter(state => state !== null)
+      }
+      this.oracle.state.value = await this.oracle.startupState(peerStates as NonEmptyArray<OracleState>)
+      this.sendState().catch(console.error)
+
+      const startTime = +new Date();
+      await new Promise((resolve) => setTimeout(resolve, (Math.floor(startTime / this.oracle.epochTime) + 1) * this.oracle.epochTime - startTime))
+      await this.epoch();
+      setInterval(() => {
+        this.epoch().catch(console.error)
+      }, this.oracle.epochTime);
+    }
+  }
+
+  public readonly onMessage = async (message: Message<OracleName, OracleMethods, OracleState> | PingPongMessage, from: `0x${string}`, callback: (_message: Message<OracleName, OracleMethods, OracleState> | PingPongMessage) => void): Promise<void> => {
+    console.log(`[${message[0].toUpperCase()}] Received message: ${message[1]} from ${from.slice(0, 8)}...`)
+    if (message[0] === 'ping') callback(['pong']);
+    else if (message[0] === 'pong') console.log('pong')
+    else if (message[0] === this.name) {
+      if (message[1] === 'state') {
+        this.peerStates[from] ??= { lastReceive: null, lastSend: null, reputation: 0 }
+        this.peerStates[from].lastReceive = message[2]
+
+        const state = this.oracle.state.value
+        if (JSON.stringify(state) !== JSON.stringify(this.peerStates[from].lastSend)) {
+          this.peerStates[from].lastSend = state
+          callback([message[0], 'state', state])
+        }
+
+        this.peerStates[from].reputation ??= 0
+        if (JSON.stringify(this.peerStates[from].lastSend) === JSON.stringify(this.peerStates[from].lastReceive)) this.peerStates[from].reputation++
+        else if (this.epochCount <= 0 && Object.keys(this.peerStates[from].lastSend ?? '{}').length !== 0) this.peerStates[from].reputation--
+      } else if (message[1] === 'call') {
+        const id = this.oracle.transactionToID(message[2], message[3])
+        if ('time' in message[3] && message[3].time < +new Date() - this.oracle.epochTime) return console.error('Transaction too old.')
+
+        if ('ORC20' in this.oracle && message[2] === 'transfer') {
+          const args = message[3] as ORC20MethodArgs['transfer']
+          if (!await this.keyManager.verify(args.signature, JSON.stringify({ from: args.from, to: args.to, amount: args.amount, time: args.time }), args.from)) return console.error('Invalid signature')
+        }
+
+        if (Object.keys(this.mempool).includes(id)) return console.error('Transaction already in mempool.')
+        this.mempool[id] = { method: message[2], args: message[3] }
+        this.sendMessage([ this.name, 'call', message[2], message[3] ]).catch(console.error)
+        Promise.resolve(this.call(message[2], message[3])).then(() => console.log(this.oracle.state.value)).catch(console.error)
+      }
+    }
+  }
+
+  private readonly epoch = async (): Promise<void> => {
+    console.log(`[${this.name}] Epoch:`, new Date().toISOString());
+    this.epochCount++
+
+    const state = this.oracle.state.value
+    if (JSON.stringify(state) !== this.lastEpochState) {
+      const peers: Record<`0x${string}`, { reputation: number, state: OracleState }> = {}
+      let netReputation = 0;
+      this.peerStates.forEach(peer => {
+        const state = this.peerStates[peer]
+        if (state === undefined) return
+        if (state.reputation === null) {
+          delete this.peerStates[peer]
+          return
+        }
+        if (state.lastReceive !== null) peers[peer] = { reputation: state.reputation, state: state.lastReceive }
+        netReputation += state.reputation;
+        state.reputation = null
+      })
+      if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
+      await this.oracle.reputationChange(peers, this.oracle.epochTime)
+      this.mempool = {}
+      console.log(`[${this.name}]`, this.oracle.state.value)
+      this.lastEpochState = JSON.stringify(this.oracle.state.value)
+    }
+
+    this.sendState().catch(console.error)
+  }
+
+  private readonly call = <T extends keyof OracleMethods>(method: T, args: Parameters<OracleMethods[T]>[0]): Promise<string | void> | string | void => this.oracle.methods[method]?.(args)
+  private readonly sendState = async () => this.signalling.sendMessage([this.name, 'state', this.oracle.state.value]);
+  public readonly sendMessage = async (message: Message<OracleName, OracleMethods, OracleState>) => this.signalling.sendMessage(message);
+}
