@@ -1,4 +1,4 @@
-keyPair*.json
+keyPair*.txt
 .DS_Store
 node_modules/*
 bun.lock
