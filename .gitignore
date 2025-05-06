@@ -3,4 +3,4 @@ keyPair*.json
 node_modules/*
 bun.lock
 package-lock.json
-src/**/*.js
+dist/*
