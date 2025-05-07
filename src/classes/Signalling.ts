@@ -109,7 +109,7 @@ export class Signalling<Message> {
       console.log(`[${this.oracleName}] (10/10) Received WebRTC message`, data);
       if (typeof data !== 'object' || data === null || !('message' in data)) return console.error('WebRTC Message invalid 1')
       if (!('signature' in data)) return console.error('WebRTC Message invalid 2')
-      this.onMessage(data.message, from, (responseMessage: Message) => channel.send(JSON.stringify({ message: responseMessage, signature: this.keyManager.sign(JSON.stringify(responseMessage)) })));
+      this.onMessage(data.message as Message, from, (responseMessage: Message) => channel.send(JSON.stringify({ message: responseMessage, signature: this.keyManager.sign(JSON.stringify(responseMessage)) })));
     };
 
     channel.onerror = (error) => console.error('Data channel error:', error);

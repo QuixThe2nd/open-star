@@ -9,14 +9,15 @@
     "lint": "eslint . --fix"
   },
   "devDependencies": {
+    "@types/bun": "^1.2.12",
     "@types/ws": "latest",
+    "esbuild": "^0.25.3",
     "eslint": "^9.26.0",
+    "glob": "^11.0.2",
     "globals": "^16.0.0",
     "jiti": "^2.4.2",
     "tsx": "^4.7.0",
-    "typescript-eslint": "^8.31.1",
-    "esbuild": "^0.25.3",
-    "glob": "^11.0.2"
+    "typescript-eslint": "^8.31.1"
   },
   "peerDependencies": {
     "typescript": "^5"
