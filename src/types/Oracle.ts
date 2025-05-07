@@ -11,6 +11,7 @@ export type PingPongMessage = ['ping' | 'pong'];
 export type Message<OracleName extends string, OracleMethods extends Record<string, (arg: any) => MethodReturn>, SerializedState> = { [K in keyof OracleMethods]: [OracleName, 'call', K & string, Parameters<OracleMethods[K]>[0]] }[keyof OracleMethods] | [OracleName, 'state', SerializedState];
 export type PeerStates<State> = Record<`0x${string}`, { lastSend: null | State; lastReceive: null | State; reputation: number | null }>;
 export interface MempoolItem<M extends Methods<any>> { method: keyof M, args: Parameters<M[keyof M]>[0] }
+export type MempoolItem<M extends Methods<any>> = { method: keyof M, args: Parameters<M[keyof M]>[0] }
 
 export type Oracle<OracleName extends string, OracleState, OracleMethods extends Record<string, (arg: any) => MethodReturn>> = {
   name: OracleName
