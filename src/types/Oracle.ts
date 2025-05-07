@@ -14,14 +14,12 @@ export interface MempoolItem<M extends Methods<any>> { method: keyof M, args: Pa
 
 export type Oracle<OracleName extends string, OracleState, OracleMethods extends Record<string, (arg: any) => MethodReturn>> = {
   name: OracleName
-  startupState: (_peerStates: NonEmptyArray<OracleState>) => Promise<OracleState> | OracleState,
-  reputationChange: (_peer: Record<`0x${string}`, { reputation: number }>, _epochTime: number) => Promise<void> | void,
   state: StateManager<OracleState>,
   methods: OracleMethods
   methodDescriptions: { [K in keyof OracleMethods]: Parameters<OracleMethods[keyof OracleMethods]>[0] }
   epochTime: number
-  transactionToID: <T extends keyof OracleMethods>(_method: T, _args: Parameters<OracleMethods[T]>[0]) => string
-  // setOpenStar?(openStar: ORC20Oracle<OracleName, OracleState extends ORC20State ? OracleState : never, OracleMethods>): void;
-  // setOpenStar?(openStar: OpenStar<OracleName, OracleState, OracleMethods>): void;
+  startupState?: (_peerStates: NonEmptyArray<OracleState>) => Promise<OracleState> | OracleState,
+  reputationChange?: (_peer: `0x${string}`, reputation: number) => void,
+  transactionToID?: <T extends keyof OracleMethods>(_method: T, _args: Parameters<OracleMethods[T]>[0]) => string
   setOpenStar?(openStar: ORC20Oracle<OracleName, OracleState extends ORC20State ? OracleState : never, OracleMethods> | OpenStar<OracleName, OracleState, OracleMethods>): void;
 } & (OracleState extends ORC20State ? { ORC20: ORC20Flags } : object)
