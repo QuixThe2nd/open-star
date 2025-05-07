@@ -23,7 +23,7 @@ export function sortObjectByKeys<T extends object>(obj: T): T {
 }
 
 BigInt.prototype.toHex = function(): `0x${string}` {
-  if (this < 0n) console.error('Negative bigint')
+  if (Number(this) < 0) throw new Error('Negative bigint')
   return `0x${this.toString(16)}`;
 };
 
