@@ -47,14 +47,14 @@ export class OpenStar<OracleName extends string, OracleState, OracleMethods exte
         await new Promise((resolve) => setTimeout(resolve, 100))
         peerStates = Object.values(this.peerStates).map(state => state.lastReceive).filter(state => state !== null)
       }
-      this.oracle.state.value = await this.oracle.startupState(peerStates as NonEmptyArray<OracleState>)
+      if (this.oracle.startupState) this.oracle.state.value = await this.oracle.startupState(peerStates as NonEmptyArray<OracleState>)
       this.sendState().catch(console.error)
 
       const startTime = +new Date();
       await new Promise((resolve) => setTimeout(resolve, (Math.floor(startTime / this.oracle.epochTime) + 1) * this.oracle.epochTime - startTime))
-      await this.epoch();
+      this.epoch();
       setInterval(() => {
-        this.epoch().catch(console.error)
+        this.epoch()
       }, this.oracle.epochTime);
     }
   }
@@ -78,7 +78,7 @@ export class OpenStar<OracleName extends string, OracleState, OracleMethods exte
         if (JSON.stringify(this.peerStates[from].lastSend) === JSON.stringify(this.peerStates[from].lastReceive)) this.peerStates[from].reputation++
         else if (this.epochCount <= 0 && Object.keys(this.peerStates[from].lastSend ?? '{}').length !== 0) this.peerStates[from].reputation--
       } else if (message[1] === 'call') {
-        const id = this.oracle.transactionToID(message[2], message[3])
+        const id = this.oracle.transactionToID ? this.oracle.transactionToID(message[2], message[3]) : JSON.stringify({ method: message[2], args: message[3] })
         if ('time' in message[3] && message[3].time < +new Date() - this.oracle.epochTime) return console.error('Transaction too old.')
 
         if ('ORC20' in this.oracle && message[2] === 'transfer') {
@@ -94,13 +94,13 @@ export class OpenStar<OracleName extends string, OracleState, OracleMethods exte
     }
   }
 
-  private readonly epoch = async (): Promise<void> => {
+  private readonly epoch = (): void => {
     console.log(`[${this.name}] Epoch:`, new Date().toISOString());
     this.epochCount++
 
     const state = this.oracle.state.value
     if (JSON.stringify(state) !== this.lastEpochState) {
-      const peers: Record<`0x${string}`, { reputation: number, state: OracleState }> = {}
+
       let netReputation = 0;
       this.peerStates.forEach(peer => {
         const state = this.peerStates[peer]
@@ -109,12 +109,13 @@ export class OpenStar<OracleName extends string, OracleState, OracleMethods exte
           delete this.peerStates[peer]
           return
         }
-        if (state.lastReceive !== null) peers[peer] = { reputation: state.reputation, state: state.lastReceive }
+        if (state.lastReceive !== null && this.oracle.reputationChange) this.oracle.reputationChange(peer, state.reputation)
         netReputation += state.reputation;
         state.reputation = null
       })
+      if (this.oracle.reputationChange) this.oracle.reputationChange(this.keyManager.address, 1)
       if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
-      await this.oracle.reputationChange(peers, this.oracle.epochTime)
+
       this.mempool = {}
       console.log(`[${this.name}]`, this.oracle.state.value)
       this.lastEpochState = JSON.stringify(this.oracle.state.value)

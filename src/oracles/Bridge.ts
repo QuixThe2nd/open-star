@@ -50,12 +50,9 @@ const methodDescriptions = {
   addLiquidity: { token: '', address: `0x` as `0x${string}`, openStarLiquidity: `0x` as `0x${string}`, tokenLiquidity: `0x` as `0x${string}` }
 }
 
-const reputationChange = (_peers: Record<`0x${string}`, { reputation: number }>) => {
-  // for (const [, { reputation }] of Object.entries(peers) as [`0x${string}`, { reputation: number }][]) {
-  //   if (reputation > 0) {} // Reward good peers
-  //   else if (reputation < 0) {} // Punish bad peers
-  // }
-  // Reward/Punish yourself the same way others would to you
+const reputationChange = (_peer: `0x${string}`, _reputation: number) => {
+  // if (reputation > 0) {} // Reward good peers
+  // else if (reputation < 0) {} // Punish bad peers
 }
 
 const startupState = (peerStates: NonEmptyArray<typeof state.value>) => mode(peerStates)

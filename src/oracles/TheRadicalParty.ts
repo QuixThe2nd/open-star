@@ -37,19 +37,16 @@ function calculateBlockYield(epochTime: number): number {
   return Math.pow(stakingYield, 1 / ((365 * 24 * 60 * 60 * 1000) / epochTime)) - 1;
 }
 
-function reputationChange(peers: Record<`0x${string}`, { reputation: number }>, epochTime: number) {
-  const blockYield = calculateBlockYield(epochTime)
-  peers.forEach((peer, { reputation }) => {
-    const balance = state.value.balances[peer]
-    if (reputation > 0) {
-      console.log('[COIN] Rewarding', peer.slice(0, 8) + '...')
-      methods.mint({ to: peer, amount: (balance !== undefined ? BigInt(Math.floor(Number(balance)*blockYield)) : parseEther(1)).toHex() });
-    } else if (reputation < 0 && balance !== undefined) {
-      console.log('[COIN] Slashing', peer.slice(0, 8) + '...')
-      methods.burn({ to: peer, amount: ((BigInt(balance)*9n)/10n).toHex() })
-    }
-  })
-  methods.mint({ to: openStar.keyManager.address, amount: (state.value.balances[openStar.keyManager.address] !== undefined ? BigInt(Math.floor(Number(state.value.balances[openStar.keyManager.address])*blockYield)) : parseEther(1)).toHex() })
+function reputationChange(peer: `0x${string}`, reputation: number) {
+  const blockYield = calculateBlockYield(15_000)
+  const balance = state.value.balances[peer]
+  if (reputation > 0) {
+    console.log('[COIN] Rewarding', peer.slice(0, 8) + '...')
+    methods.mint({ to: peer, amount: (balance !== undefined ? BigInt(Math.floor(Number(balance)*blockYield)) : parseEther(1)).toHex() });
+  } else if (reputation < 0 && balance !== undefined) {
+    console.log('[COIN] Slashing', peer.slice(0, 8) + '...')
+    methods.burn({ to: peer, amount: ((BigInt(balance)*9n)/10n).toHex() })
+  }
 }
 
 
