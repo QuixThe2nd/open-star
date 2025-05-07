@@ -194,9 +194,3 @@ When building your oracle, remember to implement logic to handle malicious and a
 I recommend you implement an xIP standard. DAOs are useful to give freedom over many issues, but without an *IP standard, the odds of an oracle-fork becomes astronomical.
 ### Consensus
 Open Star handles majority of the primitives required to achieve consensus, core consensus rules must be decided and configured by you. This includes; how you handle startup sync, how you punish/rewards other stakes, and how you decide if you're out of sync with other nodes.
-
-## Linting
-```
-npx eslint . --fix
-npx tsc --project tsconfig.json
-```
