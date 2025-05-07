@@ -2,7 +2,7 @@ import path from 'path'
 import { glob } from 'glob'
 
 async function buildFiles() {
-  const tsFiles = await glob('src/**/*.ts')
+  const oracles = await glob('src/oracles/*.ts')
 
   await Bun.build({
     minify: true,
@@ -23,7 +23,7 @@ async function buildFiles() {
         }
       }
     ],
-    entrypoints: tsFiles
+    entrypoints: [ './src/index.ts', ...oracles ]
   })
 }
 
