@@ -5,7 +5,7 @@ import demoOracle from './oracles/Demo'
 import theRadicalParty from './oracles/TheRadicalParty'
 import { start } from './oracle'
 
-const keyManager = await KeyManager.init('client')
+const keyManager = new KeyManager('client')
 
 start(coinOracle, keyManager)
 start(nameServiceOracle, keyManager)
