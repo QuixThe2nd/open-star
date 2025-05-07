@@ -11,7 +11,7 @@ export default tseslint.config(
         project: './tsconfig.json'
       }
     },
-    ignores: ['dist/'],
+    files: ['src/**/*.{js,jsx,ts,tsx}'],
     rules: {
       '@typescript-eslint/consistent-type-imports': [
         'error',
