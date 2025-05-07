@@ -30,7 +30,7 @@ export class ORC20Oracle<OracleState extends ORC20State, OracleMethods extends R
     const balance = this.oracle.state.value.balances[args.to]
     if (balance === undefined) return 'Address does not exist'
     if (balance < args.amount) this.oracle.state.value.balances[args.to] = `0x0`
-    else this.oracle.state.value.balances[args.to] = (BigInt(balance) + BigInt(args.amount)).toHex()
+    else this.oracle.state.value.balances[args.to] = (BigInt(balance) - BigInt(args.amount)).toHex()
   }
   transfer(args: { from: `0x${string}`, to: `0x${string}`, amount: `0x${string}`, signature: `0x${string}` }): string | void {
     const balance = this.oracle.state.value.balances[args.from]
