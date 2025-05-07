@@ -3,11 +3,10 @@ name: Run Tests
 on:
   pull_request:
     branches: [ main ]
-  push:
-    branches: [ main ]
 
 jobs:
   test:
+    name: Run Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -23,3 +22,9 @@ jobs:
     
     - name: Run tests
       run: bun run test
+    
+    - name: Validate types
+      run: bun run type-check
+
+    - name: Lint
+      run: bun run lint
