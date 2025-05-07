@@ -25,14 +25,15 @@ If the script stalls at `Announcing`, run a second node. This happens when no pe
 Open Star can be imported using `npm install QuixThe2nd/open-star` and used like `src/client.ts` to import and run oracles.
 
 ### Usage
-To use an oracle, import it's start function:
+To use an oracle, import Open Star and the oracle:
 ```ts
-import start from "open-star/oracles/Demo"
+import { start } from "open-star"
+import oracle from "open-star/oracles/Demo"
 ```
 
 Then run it:
 ```ts
-start()
+start(oracle)
 ```
 
 Open Star will then run your oracle.
