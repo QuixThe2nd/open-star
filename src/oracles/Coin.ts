@@ -1,28 +1,10 @@
 import { StateManager } from "../classes/StateManager"
 import type { ORC20Oracle } from "../oracle/ORC20"
 import type { Oracle } from "../types/Oracle"
-import type { ORC20Methods, ORC20State } from "../types/ORC20"
+import type { ORC20State } from "../types/ORC20"
 import { mode, parseEther } from "../utils"
 
 const state = new StateManager<ORC20State>({ balances: {} })
-
-interface CoinMethods extends ORC20Methods {
-  transfer: (args: { from: `0x${string}`, to: `0x${string}`, amount: `0x${string}`, signature: `0x${string}` }) => string | void
-}
-
-const methodDescriptions = {
-  transfer: { from: `0x`, to: `0x`, amount: `0x`, time: 0, signature: `0x` },
-}
-
-const methods: CoinMethods = {
-  transfer(args: { from: `0x${string}`, to: `0x${string}`, amount: `0x${string}`, signature: `0x${string}` }): string | void {
-    const balance = state.value.balances[args.from]
-    if (balance === undefined) return 'No balance'
-    if (balance < args.amount) return 'Balance too low'
-    state.value.balances[args.from] = (BigInt(balance) - BigInt(args.amount)).toHex()
-    state.value.balances[args.to] = (BigInt(state.value.balances[args.to] ?? `0x0`) + BigInt(args.amount)).toHex()
-  }
-}
 
 function calculateEpochYield(epochTime: number): number {
   const stakingRate = openStar.stakingRate()
@@ -42,20 +24,18 @@ const reputationChange = (peer: `0x${string}`, reputation: number): void => {
   }
 }
 
-let openStar: ORC20Oracle<ORC20State, typeof methods>
-const setOpenStar = (newOpenStar: ORC20Oracle<ORC20State, typeof methods>) => {
+let openStar: ORC20Oracle<ORC20State, Record<string, never>>
+const setOpenStar = (newOpenStar: ORC20Oracle<ORC20State, Record<string, never>>) => {
   openStar = newOpenStar
 }
 
-const oracle: Oracle<typeof state.value, typeof methods> = {
+const oracle: Oracle<typeof state.value, Record<string, never>> = {
   name: 'COIN',
   epochTime: 5_000,
   ORC20: { ticker: 'STAR' },
   transactionToID: (method, args) => `${method}-${JSON.stringify(args)}`,
   startupState: (peerStates) => mode(peerStates),
   state,
-  methods,
-  methodDescriptions,
   reputationChange,
   setOpenStar
 }

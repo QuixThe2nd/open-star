@@ -2,7 +2,7 @@ import { Signalling } from "../classes/Signalling";
 import type { KeyManager } from "../classes/KeyManager";
 import type { NonEmptyArray } from "../types/generic";
 import type { MethodReturn, PingPongMessage, Oracle, PeerStates, MempoolItem, Message } from "../types/Oracle";
-import type { ORC20MethodArgs } from "../types/ORC20";
+import { isHexAddress } from "../utils";
 
 export class OpenStar<OracleState, OracleMethods extends Record<string, (arg: any) => MethodReturn>, OracleName extends string> {
   public readonly signalling: Signalling<Message<OracleName, OracleMethods, OracleState> | PingPongMessage>
@@ -81,9 +81,11 @@ export class OpenStar<OracleState, OracleMethods extends Record<string, (arg: an
         const id = this.oracle.transactionToID ? this.oracle.transactionToID(message[2], message[3]) : JSON.stringify({ method: message[2], args: message[3] })
         if ('time' in message[3] && message[3].time < +new Date() - this.oracle.epochTime) return console.error('Transaction too old.')
 
-        if ('ORC20' in this.oracle && message[2] === 'transfer') {
-          const args = message[3] as ORC20MethodArgs['transfer']
-          if (!await this.keyManager.verify(args.signature, JSON.stringify({ from: args.from, to: args.to, amount: args.amount, time: args.time }), args.from)) return console.error('Invalid signature')
+        if ('signature' in message[3]) {
+          const { signature, ...args } = message[3]
+          if (!isHexAddress(signature)) return console.error('Invalid signature')
+          if (!isHexAddress(args['from'])) return console.error('Invalid signature')
+          if (!await this.keyManager.verify(signature, JSON.stringify(args), args['from'])) return console.error('Invalid signature')
         }
 
         if (Object.keys(this.mempool).includes(id)) return console.error('Transaction already in mempool.')
@@ -124,7 +126,9 @@ export class OpenStar<OracleState, OracleMethods extends Record<string, (arg: an
     this.sendState().catch(console.error)
   }
 
-  private readonly call = <T extends keyof OracleMethods>(method: T, args: Parameters<OracleMethods[T]>[0]): Promise<string | void> | string | void => this.oracle.methods[method]?.(args)
+  private readonly call = async <T extends keyof OracleMethods>(method: T, args: Parameters<OracleMethods[T]>[0]): Promise<string | void> => {
+    if ('methods' in this.oracle) await this.oracle.methods[method]?.(args)
+  }
   private readonly sendState = async () => this.signalling.sendMessage([this.name, 'state', this.oracle.state.value]);
   public readonly sendMessage = async (message: Message<OracleName, OracleMethods, OracleState>) => this.signalling.sendMessage(message);
 }

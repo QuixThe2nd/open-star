@@ -6,14 +6,14 @@ export class ORC20Oracle<OracleState extends ORC20State, OracleMethods extends R
   protected override initializeExtended(): void {
     if (this.oracle.setOpenStar) this.oracle.setOpenStar(this)
   }
-  circulatingSupply = () => {
+  circulatingSupply() {
     let supply = 0n
     this.oracle.state.value.balances.forEach(peer => {
       supply += BigInt(this.oracle.state.value.balances[peer] ?? `0x0`)
     })
     return supply
   }
-  stakedSupply = () => {
+  stakedSupply() {
     let coinsStaked = 0n
     this.peerStates.forEach(peer => {
       coinsStaked += BigInt(this.oracle.state.value.balances[peer] ?? `0x0`)
@@ -31,5 +31,12 @@ export class ORC20Oracle<OracleState extends ORC20State, OracleMethods extends R
     if (balance === undefined) return 'Address does not exist'
     if (balance < args.amount) this.oracle.state.value.balances[args.to] = `0x0`
     else this.oracle.state.value.balances[args.to] = (BigInt(balance) + BigInt(args.amount)).toHex()
+  }
+  transfer(args: { from: `0x${string}`, to: `0x${string}`, amount: `0x${string}`, signature: `0x${string}` }): string | void {
+    const balance = this.oracle.state.value.balances[args.from]
+    if (balance === undefined) return 'No balance'
+    if (balance < args.amount) return 'Balance too low'
+    this.oracle.state.value.balances[args.from] = (BigInt(balance) - BigInt(args.amount)).toHex()
+    this.oracle.state.value.balances[args.to] = (BigInt(this.oracle.state.value.balances[args.to] ?? `0x0`) + BigInt(args.amount)).toHex()
   }
 }
