@@ -3,6 +3,9 @@
   "main": "src/index.ts",
   "module": "src/index.ts",
   "type": "module",
+  "scripts": {
+    "test": "tsx src/tests/ORC20.ts"
+  },
   "devDependencies": {
     "@types/ws": "latest",
     "eslint": "^9.26.0",
