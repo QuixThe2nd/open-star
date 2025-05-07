@@ -4,19 +4,19 @@ import type { NonEmptyArray } from "../types/generic";
 import type { MethodReturn, PingPongMessage, Oracle, PeerStates, MempoolItem, Message } from "../types/Oracle";
 import type { ORC20MethodArgs } from "../types/ORC20";
 
-export class OpenStar<OracleName extends string, OracleState, OracleMethods extends Record<string, (arg: any) => MethodReturn>> {
+export class OpenStar<OracleState, OracleMethods extends Record<string, (arg: any) => MethodReturn>, OracleName extends string> {
   public readonly signalling: Signalling<Message<OracleName, OracleMethods, OracleState> | PingPongMessage>
   private epochCount = -1
   readonly keyManager: KeyManager
   private lastEpochState = ''
   connected = false
   readonly name: OracleName
-  public readonly oracle: Oracle<OracleName, OracleState, OracleMethods>
+  public readonly oracle: Oracle<OracleState, OracleMethods, OracleName>
   public readonly _peerStates: PeerStates<OracleState> = {}
   private mempool: Record<string, MempoolItem<OracleMethods>> = {}
   connectHandler?: () => void
 
-  constructor(oracle: Oracle<OracleName, OracleState, OracleMethods>, keyManager: KeyManager) {
+  constructor(oracle: Oracle<OracleState, OracleMethods, OracleName>, keyManager: KeyManager) {
     this.name = oracle.name
     this.keyManager = keyManager
     this.oracle = oracle
@@ -47,7 +47,7 @@ export class OpenStar<OracleName extends string, OracleState, OracleMethods exte
         await new Promise((resolve) => setTimeout(resolve, 100))
         peerStates = Object.values(this.peerStates).map(state => state.lastReceive).filter(state => state !== null)
       }
-      if (this.oracle.startupState) this.oracle.state.value = await this.oracle.startupState(peerStates as NonEmptyArray<OracleState>)
+      this.oracle.state.value = await this.oracle.startupState(peerStates as NonEmptyArray<OracleState>)
       this.sendState().catch(console.error)
 
       const startTime = +new Date();

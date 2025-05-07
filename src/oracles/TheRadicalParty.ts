@@ -50,10 +50,10 @@ function reputationChange(peer: `0x${string}`, reputation: number) {
 }
 
 
-let openStar: ORC20Oracle<'THERADICALPARTY', typeof state.value, typeof methods>
-const setOpenStar = (newOpenStar: ORC20Oracle<'THERADICALPARTY', typeof state.value, typeof methods>) => {
+let openStar: ORC20Oracle<typeof state.value, typeof methods>
+const setOpenStar = (newOpenStar: ORC20Oracle<typeof state.value, typeof methods>) => {
   openStar = newOpenStar
 }
 
-const oracle: Oracle<'THERADICALPARTY', typeof state.value, typeof methods> = { name: 'THERADICALPARTY', epochTime: 15_000, ORC20, startupState, reputationChange, state, methods, methodDescriptions, transactionToID, setOpenStar }
+const oracle: Oracle<typeof state.value, typeof methods> = { name: 'THERADICALPARTY', epochTime: 15_000, ORC20, startupState, reputationChange, state, methods, methodDescriptions, transactionToID, setOpenStar }
 export default oracle

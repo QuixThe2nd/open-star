@@ -55,12 +55,12 @@ const reputationChange = (peer: `0x${string}`, reputation: number): void => {
   }
 }
 
-let openStar: ORC20Oracle<"COIN", ORC20State, CoinMethods>
-const setOpenStar = (newOpenStar: ORC20Oracle<"COIN", ORC20State, CoinMethods>) => {
+let openStar: ORC20Oracle<ORC20State, typeof methods>
+const setOpenStar = (newOpenStar: ORC20Oracle<ORC20State, typeof methods>) => {
   openStar = newOpenStar
 }
 
-const oracle: Oracle<'COIN', typeof state.value, typeof methods> = {
+const oracle: Oracle<typeof state.value, typeof methods> = {
   name: 'COIN',
   epochTime: 5_000,
   ORC20: { ticker: 'STAR' },
