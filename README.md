@@ -85,28 +85,11 @@ export default oracle
 ```
 
 ### Startup State
-Write a function that returns the current state. This is called when nodes first connect to the network.
+Write a function that returns the current state. This is called when nodes first connect to the network and should be placed inside the oracle object.
 ```ts
-oracle.startupState = (peerStates) => peerStates.toSorted((a,b) => peerStates.filter(v => v===a).length - peerStates.filter(v => v===b).length).pop()
+startupState: (peerStates) => peerStates.toSorted((a,b) => peerStates.filter(v => v===a).length - peerStates.filter(v => v===b).length).pop(),
 ```
 
-### Transaction IDs
-Transactions (`method` calls) need to be identified. Define a function the takes a method call and serializes it into a unique string.
-```ts
-oracle.transactionToID = (operator, args) => `${operator}-${args.value}-${args.time}`;
-```
-
-### Reputation Manager
-Next you need to set the reputation handler:
-```ts
-oracle.reputationChange = (_peer, reputation) => {
-  if (reputation > 0) {
-    // Reward good peer
-  } else if (reputation < 0) {
-    // Punish bad peer
-  }
-}
-```
 Open Star will call your reputation handler with a list of peers and their reputation. You can configure how to treat good/bad actors. Reputation is calculated as number of times the peer has sent you a valid or invalid state. This function is the only acceptable place to change state or to call methods.
 
 Your Open Star client will handle the rest. You can check `src/client.ts` to see how your oracle is passed to Open Star. The full example is available at `./src/oracles/Demo.ts`.
