@@ -105,24 +105,20 @@ const state = new StateManager<ORC20State>({ balances: {} })
 ```
 
 ### Coin Methods
-Now you need to define the methods available for your coin. ORC20s need a `transfer`, `mint`, and `burn` method.
+Now you need to define the methods available for your coin. ORC20s need a `transfer` method.
 ```ts
 import { ORC20Methods } from "open-star"
 
 interface CoinMethods extends ORC20Methods {
   transfer: (args: { from: `0x${string}`, to: `0x${string}`, amount: `0x${string}`, signature: `0x${string}` }) => string | void
-  mint: (args: { to: `0x${string}`, amount: `0x${string}` }) => string | void
-  burn: (args: { to: `0x${string}`, amount: `0x${string}` }) => string | void
 }
 
 const methodDescriptions = {
   transfer: { from: `0x`, to: `0x`, amount: `0x`, time: 0, signature: `0x` },
-  mint: { to: `0x`, amount: `0x` }, 
-  burn: { to: `0x`, amount: `0x` }
 }
 ```
 
-Now write the implementation of your methods:
+Now write the implementation of your method:
 ```ts
 const methods: CoinMethods = {
   transfer(args: { from: `0x${string}`, to: `0x${string}`, amount: `0x${string}`, signature: `0x${string}` }): string | void {
@@ -131,15 +127,6 @@ const methods: CoinMethods = {
     if (balance < args.amount) return 'Balance too low'
     state.value.balances[args.from] = (BigInt(balance) - BigInt(args.amount)).toHex()
     state.value.balances[args.to] = (BigInt(state.value.balances[args.to] ?? `0x0`) + BigInt(args.amount)).toHex()
-  },
-  mint(args: { to: `0x${string}`, amount: `0x${string}` }) {
-    state.value.balances[args.to] = (BigInt(state.value.balances[args.to] ?? `0x0`) + BigInt(args.amount)).toHex()
-  },
-  burn(args: { to: `0x${string}`, amount: `0x${string}` }): string | void {
-    const balance = state.value.balances[args.to]
-    if (balance === undefined) return 'Address does not exist'
-    if (balance < args.amount) state.value.balances[args.to] = `0x0`
-    else state.value.balances[args.to] = (BigInt(balance) + BigInt(args.amount)).toHex()
   }
 }
 ```
@@ -162,13 +149,14 @@ const reputationChange = (peer: `0x${string}`, reputation: number): void => {
   const blockYield = calculateEpochYield(5_000)
   if (reputation > 0) {
     console.log('[COIN] Rewarding', peer.slice(0, 8) + '...')
-    methods.mint({ to: peer, amount: (state.value.balances[peer] !== undefined ? BigInt(Math.floor(Number(state.value.balances[peer])*blockYield)) : parseEther(100)).toHex() });
+    openStar.mint({ to: peer, amount: (state.value.balances[peer] !== undefined ? BigInt(Math.floor(Number(state.value.balances[peer])*blockYield)) : parseEther(100)).toHex() });
   } else if (reputation < 0 && state.value.balances[peer] !== undefined) {
     console.log('[COIN] Slashing', peer.slice(0, 8) + '...')
-    methods.burn({ to: peer, amount: ((BigInt(state.value.balances[peer])*9n)/10n).toHex() })
+    openStar.burn({ to: peer, amount: ((BigInt(state.value.balances[peer])*9n)/10n).toHex() })
   }
 }
 ```
+Open Star ORC20s have access to the native `mint` and `burn` functions. You can choose to either use them or create your own methods for issuance and burning.
 
 ### Open Star Setter
 In `calculateEpochYield`, we called Open Star's `stakingRate` function. To access Open Star, we need to define a setter that Open Star calls on run.

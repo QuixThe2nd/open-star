@@ -11,20 +11,9 @@ const methods = {
     if (args.value.length === 0) return 'Law is empty'
     if (args.value.length > 280) return 'Law must be under 280 characters'
     state.value.laws.push(args.value)
-  },
-  mint(args: { to: `0x${string}`, amount: `0x${string}` }) {
-    state.value.balances[args.to] = (BigInt(state.value.balances[args.to] ?? 0) + BigInt(args.amount)).toHex()
-  },
-  burn(args: { to: `0x${string}`, amount: `0x${string}` }): string | void {
-    const balance = state.value.balances[args.to]
-    if (balance === undefined) return 'Address does not exist'
-    if (BigInt(balance) < BigInt(args.amount)) state.value.balances[args.to] = `0x0`
-    else state.value.balances[args.to] = (BigInt(state.value.balances[args.to] ?? 0) - BigInt(args.amount)).toHex()
-  },
+  }
 }
 const methodDescriptions: { [K in keyof typeof methods]: Parameters<typeof methods[keyof typeof methods]>[0] } = {
-  mint: { to: `0x`, amount: `0x` },
-  burn: { to: `0x`, amount: `0x` },
   submitLaw: { value: '', time: 0 }
 }
 const startupState = (peerStates: NonEmptyArray<typeof state.value>) => mode(peerStates)
@@ -42,10 +31,10 @@ function reputationChange(peer: `0x${string}`, reputation: number) {
   const balance = state.value.balances[peer]
   if (reputation > 0) {
     console.log('[COIN] Rewarding', peer.slice(0, 8) + '...')
-    methods.mint({ to: peer, amount: (balance !== undefined ? BigInt(Math.floor(Number(balance)*blockYield)) : parseEther(1)).toHex() });
+    openStar.mint({ to: peer, amount: (balance !== undefined ? BigInt(Math.floor(Number(balance)*blockYield)) : parseEther(1)).toHex() });
   } else if (reputation < 0 && balance !== undefined) {
     console.log('[COIN] Slashing', peer.slice(0, 8) + '...')
-    methods.burn({ to: peer, amount: ((BigInt(balance)*9n)/10n).toHex() })
+    openStar.burn({ to: peer, amount: ((BigInt(balance)*9n)/10n).toHex() })
   }
 }
 

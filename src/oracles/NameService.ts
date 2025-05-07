@@ -26,22 +26,11 @@ class NameServiceOracle {
 
       this.state.value.hostnames[args.hostname] = args.from
       console.log(`[NAMESERVICE] Registered ${args.hostname} to ${args.from}`)
-    },
-    mint: (args: { to: `0x${string}`, amount: `0x${string}` }): void | string => {
-      this.state.value.balances[args.to] = (BigInt(this.state.value.balances[args.to] ?? `0x0`) + BigInt(args.amount)).toHex()
-    },
-    burn: (args: { to: `0x${string}`, amount: `0x${string}` }): void | string => {
-      const balance = this.state.value.balances[args.to]
-      if (balance === undefined) return 'Address does not exist'
-      if (balance < args.amount) this.state.value.balances[args.to] = `0x0`
-      else this.state.value.balances[args.to] = (BigInt(balance) - BigInt(args.amount)).toHex()
-    },
+    }
   }
 
   readonly methodDescriptions: { [K in keyof typeof this.methods]: Parameters<typeof this.methods[keyof typeof this.methods]>[0] } = {
     register: { from: `0x`, hostname: `.star`, signature: `0x` },
-    mint: { to: `0x`, amount: `0x` },
-    burn: { to: `0x`, amount: `0x` }
   }
 
   blockYield(epochTime: number): number {
@@ -54,10 +43,10 @@ class NameServiceOracle {
     const blockYield = this.blockYield(this.epochTime)
     if (reputation > 0) {
       console.log('[NAMESERVICE] Rewarding', peer.slice(0, 8) + '...')
-      this.methods.mint({ to: peer, amount: (this.state.value.balances[peer] !== undefined ? BigInt(Math.floor(Number(this.state.value.balances[peer])*blockYield)) : parseEther(1)).toHex() })
+      this.openStar.mint({ to: peer, amount: (this.state.value.balances[peer] !== undefined ? BigInt(Math.floor(Number(this.state.value.balances[peer])*blockYield)) : parseEther(1)).toHex() })
     } else if (reputation < 0 && this.state.value.balances[peer] !== undefined) {
       console.log('[NAMESERVICE] Slashing', peer.slice(0, 8) + '...')
-      this.methods.burn({ to: peer, amount: ((BigInt(this.state.value.balances[peer])*9n)/10n).toHex() })
+      this.openStar.burn({ to: peer, amount: ((BigInt(this.state.value.balances[peer])*9n)/10n).toHex() })
     }
   }
 
