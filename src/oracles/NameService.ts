@@ -3,7 +3,7 @@ import type { ORC20Oracle } from "../oracle/ORC20"
 import type { NonEmptyArray } from "../types/generic"
 import type { Oracle } from "../types/Oracle"
 import type { ORC20State } from "../types/ORC20"
-import { mode, parseEther, sortObjectByKeys } from "../utils"
+import { mode, parseEther } from "../utils"
 
 type State = ORC20State & { hostnames: Record<`${string}.star`, `0x${string}`> }
 
@@ -31,7 +31,6 @@ class NameServiceOracle {
     },
     mint: (args: { to: `0x${string}`, amount: `0x${string}` }): void | string => {
       this.state.value.balances[args.to] = (BigInt(this.state.value.balances[args.to] ?? `0x0`) + BigInt(args.amount)).toHex()
-      this.state.value = sortObjectByKeys(this.state.value)
     },
     burn: (args: { to: `0x${string}`, amount: `0x${string}` }): void | string => {
       const balance = this.state.value.balances[args.to]
@@ -53,18 +52,15 @@ class NameServiceOracle {
     return Math.pow(stakingYield, 1 / ((365 * 24 * 60 * 60 * 1000) / epochTime)) - 1;
   }
 
-  public readonly reputationChange = (peers: Record<`0x${string}`, { reputation: number }>, epochTime: number): Promise<void> | void => {
-    const blockYield = this.blockYield(epochTime)
-    peers.forEach((peer, { reputation }) => {
-      if (reputation > 0) {
-        console.log('[NAMESERVICE] Rewarding', peer.slice(0, 8) + '...')
-        this.methods.mint({ to: peer, amount: (this.state.value.balances[peer] !== undefined ? BigInt(Math.floor(Number(this.state.value.balances[peer])*blockYield)) : parseEther(1)).toHex() })
-      } else if (reputation < 0 && this.state.value.balances[peer] !== undefined) {
-        console.log('[NAMESERVICE] Slashing', peer.slice(0, 8) + '...')
-        this.methods.burn({ to: peer, amount: ((BigInt(this.state.value.balances[peer])*9n)/10n).toHex() })
-      }
-    })
-    this.methods.mint({ to: this.openStar.keyManager.address, amount: (this.state.value.balances[this.openStar.keyManager.address] !== undefined ? BigInt(Math.floor(Number(this.state.value.balances[this.openStar.keyManager.address])*blockYield)) : parseEther(1)).toHex() })
+  public readonly reputationChange = (peer: `0x${string}`, reputation: number): void => {
+    const blockYield = this.blockYield(this.epochTime)
+    if (reputation > 0) {
+      console.log('[NAMESERVICE] Rewarding', peer.slice(0, 8) + '...')
+      this.methods.mint({ to: peer, amount: (this.state.value.balances[peer] !== undefined ? BigInt(Math.floor(Number(this.state.value.balances[peer])*blockYield)) : parseEther(1)).toHex() })
+    } else if (reputation < 0 && this.state.value.balances[peer] !== undefined) {
+      console.log('[NAMESERVICE] Slashing', peer.slice(0, 8) + '...')
+      this.methods.burn({ to: peer, amount: ((BigInt(this.state.value.balances[peer])*9n)/10n).toHex() })
+    }
   }
 
   readonly transactionToID = <T extends keyof typeof this.methods>(method: T, args: Parameters<typeof this.methods[T]>[0]) => `${method}-${JSON.stringify(args)}`
