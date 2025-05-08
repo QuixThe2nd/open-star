@@ -100,25 +100,23 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
     console.log(`[${this.name}] Epoch:`, new Date().toISOString());
     this.epochCount++
 
-    const state = this.oracle.state.value
-    if (JSON.stringify(state) !== this.lastEpochState) {
+    let netReputation = 0;
+    this.peerStates.forEach(peer => {
+      const state = this.peerStates[peer]
+      if (state === undefined) return
+      if (state.reputation === null) {
+        delete this.peerStates[peer]
+        return
+      }
+      if (state.lastReceive !== null && this.oracle.reputationChange) this.oracle.reputationChange(peer, state.reputation)
+      netReputation += state.reputation;
+      state.reputation = null
+    })
+    if (this.oracle.reputationChange) this.oracle.reputationChange(this.keyManager.address, 1)
+    if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
+    this.mempool = {}
 
-      let netReputation = 0;
-      this.peerStates.forEach(peer => {
-        const state = this.peerStates[peer]
-        if (state === undefined) return
-        if (state.reputation === null) {
-          delete this.peerStates[peer]
-          return
-        }
-        if (state.lastReceive !== null && this.oracle.reputationChange) this.oracle.reputationChange(peer, state.reputation)
-        netReputation += state.reputation;
-        state.reputation = null
-      })
-      if (this.oracle.reputationChange) this.oracle.reputationChange(this.keyManager.address, 1)
-      if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
-
-      this.mempool = {}
+    if (JSON.stringify(this.oracle.state.value) !== this.lastEpochState) {
       console.log(`[${this.name}]`, this.oracle.state.value)
       this.lastEpochState = JSON.stringify(this.oracle.state.value)
     }
