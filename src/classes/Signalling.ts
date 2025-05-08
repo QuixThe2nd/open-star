@@ -133,9 +133,9 @@ export class Signalling<Message> {
       console.log(`[${this.oracleName}] ICE connection state: ${conn.iceConnectionState}`);
       if (conn.iceConnectionState === 'failed') conn.restartIce();
     };
-    conn.onnegotiationneeded = () => console.log(`Negotiation needed`);
-    conn.onsignalingstatechange = () => console.log(`Signaling state changed: ${conn.signalingState}`);
-    conn.onicegatheringstatechange = () => console.log(`ICE gathering state: ${conn.iceGatheringState}`);
+    conn.onnegotiationneeded = () => console.log(`[${this.oracleName}] Negotiation needed`);
+    conn.onsignalingstatechange = () => console.log(`[${this.oracleName}] Signaling state changed: ${conn.signalingState}`);
+    conn.onicegatheringstatechange = () => console.log(`[${this.oracleName}] ICE gathering state: ${conn.iceGatheringState}`);
 
     return { conn, channel, iceCandidates, remoteDescriptionSet: false };
   }
