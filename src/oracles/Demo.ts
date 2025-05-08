@@ -6,11 +6,11 @@ const state = new StateManager({ number: 0 })
 const methods = {
   add: (args: { value: number, time: number }): string | void => {
     if (args.value <= 0) return 'Value must be positive'
-    state.value.number += args.value
+    state.set({ number: Number(state.value.number) + Number(args.value) })
   },
   subtract: (args: { value: number, time: number }): string | void => {
     if (args.value <= 0) return 'Value must be positive'
-    state.value.number -= args.value
+    state.set({ number: state.value.number - args.value })
   }
 }
 const methodDescriptions = {
@@ -18,5 +18,5 @@ const methodDescriptions = {
   subtract: { value: 0, time: 0 },
 }
 
-const oracle: Oracle<typeof state.value, typeof methods> = { name: 'DEMO', epochTime: 60_000, state, methods, methodDescriptions, startupState: (peerStates) => mode(peerStates) }
+const oracle: Oracle<typeof state.value, typeof methods> = { name: 'DEMO', epochTime: 5_000, state, methods, methodDescriptions, startupState: (peerStates) => mode(peerStates) }
 export default oracle

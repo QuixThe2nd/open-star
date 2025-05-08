@@ -12,14 +12,15 @@ type LiquidityPool = Record<string, {
 const state = new StateManager<{ pools: LiquidityPool, burnRate: number }>({ pools: {}, burnRate: 0.5 })
 const methods = {
   addLiquidity: ({ token, address, openStarLiquidity, tokenLiquidity }: { token: keyof LiquidityPool, address: `0x${string}`, openStarLiquidity: `0x${string}`, tokenLiquidity: `0x${string}` }): string | void => {
-    state.value.pools[token] ??= {
+    const stateValue = state.value
+    stateValue.pools[token] ??= {
       openStarLiquidity: parseEther(1).toHex(),
       tokenLiquidity: parseEther(1).toHex(),
       share: { "0x": 1 }
     }
 
-    const existingOpenStarLiquidity = BigInt(state.value.pools[token].openStarLiquidity)
-    const existingTokenLiquidity = BigInt(state.value.pools[token].tokenLiquidity)
+    const existingOpenStarLiquidity = BigInt(stateValue.pools[token].openStarLiquidity)
+    const existingTokenLiquidity = BigInt(stateValue.pools[token].tokenLiquidity)
     const newOpenStarLiquidity = BigInt(openStarLiquidity)
     const newTokenLiquidity = BigInt(tokenLiquidity)
     
@@ -36,14 +37,15 @@ const methods = {
 
     if (!(address in updatedShares)) updatedShares[address] = liquidityShareRatio
 
-    state.value.pools[token].share.forEach((existingAddress, existingShare) => {
+    state.value.pools[token]?.share.forEach((existingAddress, existingShare) => {
       if (existingAddress === address) updatedShares[existingAddress] = existingShare * (1 - liquidityShareRatio) + liquidityShareRatio
       else updatedShares[existingAddress] = existingShare * (1 - liquidityShareRatio)
     })
 
-    state.value.pools[token].openStarLiquidity = totalOpenStarLiquidity.toHex()
-    state.value.pools[token].tokenLiquidity = totalTokenLiquidity.toHex()
-    state.value.pools[token].share = updatedShares
+    stateValue.pools[token].openStarLiquidity = totalOpenStarLiquidity.toHex()
+    stateValue.pools[token].tokenLiquidity = totalTokenLiquidity.toHex()
+    stateValue.pools[token].share = updatedShares
+    state.set(stateValue)
   },
 }
 const methodDescriptions = {

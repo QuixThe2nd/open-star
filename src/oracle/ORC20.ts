@@ -8,7 +8,8 @@ export class ORC20Oracle<OracleState extends ORC20State = ORC20State, OracleMeth
   }
   circulatingSupply() {
     let supply = 0n
-    this.oracle.state.value.balances.forEach(peer => {
+    const state = this.oracle.state.value as ORC20State
+    state.balances.forEach(peer => {
       supply += BigInt(this.oracle.state.value.balances[peer] ?? `0x0`)
     })
     return supply
@@ -24,19 +25,25 @@ export class ORC20Oracle<OracleState extends ORC20State = ORC20State, OracleMeth
     return this.circulatingSupply() === 0n || this.stakedSupply() === 0n ? 1 : Number(this.stakedSupply()) / Number(this.circulatingSupply())
   }
   mint(args: { to: `0x${string}`, amount: `0x${string}` }) {
-    this.oracle.state.value.balances[args.to] = (BigInt(this.oracle.state.value.balances[args.to] ?? `0x0`) + BigInt(args.amount)).toHex()
+    const state = this.oracle.state.value as OracleState
+    state.balances[args.to] = (BigInt(this.oracle.state.value.balances[args.to] ?? `0x0`) + BigInt(args.amount)).toHex()
+    this.oracle.state.set(state)
   }
   burn(args: { to: `0x${string}`, amount: `0x${string}` }): string | void {
     const balance = this.oracle.state.value.balances[args.to]
     if (balance === undefined) return 'Address does not exist'
-    if (balance < args.amount) this.oracle.state.value.balances[args.to] = `0x0`
-    else this.oracle.state.value.balances[args.to] = (BigInt(balance) - BigInt(args.amount)).toHex()
+    const state = this.oracle.state.value as OracleState
+    if (balance < args.amount) state.balances[args.to] = `0x0`
+    else state.balances[args.to] = (BigInt(balance) - BigInt(args.amount)).toHex()
+    this.oracle.state.set(state)
   }
   transfer(args: { from: `0x${string}`, to: `0x${string}`, amount: `0x${string}`, signature: `0x${string}` }): string | void {
     const balance = this.oracle.state.value.balances[args.from]
     if (balance === undefined) return 'No balance'
     if (balance < args.amount) return 'Balance too low'
-    this.oracle.state.value.balances[args.from] = (BigInt(balance) - BigInt(args.amount)).toHex()
-    this.oracle.state.value.balances[args.to] = (BigInt(this.oracle.state.value.balances[args.to] ?? `0x0`) + BigInt(args.amount)).toHex()
+    const state = this.oracle.state.value as OracleState
+    state.balances[args.from] = (BigInt(balance) - BigInt(args.amount)).toHex()
+    state.balances[args.to] = (BigInt(state.balances[args.to] ?? `0x0`) + BigInt(args.amount)).toHex()
+    this.oracle.state.set(state)
   }
 }

@@ -47,7 +47,7 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
         await new Promise((resolve) => setTimeout(resolve, 100))
         peerStates = Object.values(this.peerStates).map(state => state.lastReceive).filter(state => state !== null)
       }
-      this.oracle.state.value = await this.oracle.startupState(peerStates as NonEmptyArray<OracleState>)
+      this.oracle.state.set(await this.oracle.startupState(peerStates as NonEmptyArray<OracleState>))
       this.sendState().catch(console.error)
 
       const startTime = +new Date();
