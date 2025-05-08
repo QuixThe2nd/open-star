@@ -27,16 +27,16 @@ BigInt.prototype.toHex = function(): `0x${string}` {
   return `0x${this.toString(16)}`;
 };
 
-Object.prototype.forEach = function <T extends object>(this: T, callback: (key: keyof T, value: T[keyof T]) => void) {
+Object.prototype.forEach = function <T extends object, R>(this: T, callback: (key: keyof T, value: T[keyof T]) => R) {
+  const responses: R[] = []
   for (const key in this) {
-    if (Object.prototype.hasOwnProperty.call(this, key)) callback(key as keyof T, this[key])
+    if (Object.prototype.hasOwnProperty.call(this, key)) responses.push(callback(key as keyof T, this[key]))
   }
+  return responses
 }
 
 Object.prototype.keys = function <T extends object>(this: T) {
-  const keys: Array<keyof T> = []
-  this.forEach((key) => keys.push(key))
-  return keys
+  return this.forEach((key) => { return key })
 }
 
 export const isHexAddress = (value: unknown): value is `0x${string}` => typeof value === 'string' ? value.startsWith('0x') : false;

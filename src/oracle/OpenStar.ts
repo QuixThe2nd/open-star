@@ -53,9 +53,7 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
       const startTime = +new Date();
       await new Promise((resolve) => setTimeout(resolve, (Math.floor(startTime / this.oracle.epochTime) + 1) * this.oracle.epochTime - startTime))
       this.epoch();
-      setInterval(() => {
-        this.epoch()
-      }, this.oracle.epochTime);
+      setInterval(() => this.epoch(), this.oracle.epochTime);
     }
   }
 
@@ -75,7 +73,7 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
         }
 
         this.peerStates[from].reputation ??= 0
-        if (JSON.stringify(this.peerStates[from].lastSend) === JSON.stringify(this.peerStates[from].lastReceive)) this.peerStates[from].reputation++
+        if (JSON.stringify(this.peerStates[from].lastSend) === JSON.stringify(this.oracle.state.value)) this.peerStates[from].reputation++
         else if (this.epochCount <= 0 && Object.keys(this.peerStates[from].lastSend ?? '{}').length !== 0) this.peerStates[from].reputation--
       } else if (message[1] === 'call') {
         const id = this.oracle.transactionToID ? this.oracle.transactionToID(message[2], message[3]) : JSON.stringify({ method: message[2], args: message[3] })
@@ -100,25 +98,24 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
     console.log(`[${this.name}] Epoch:`, new Date().toISOString());
     this.epochCount++
 
-    const state = this.oracle.state.value
-    if (JSON.stringify(state) !== this.lastEpochState) {
+    let netReputation = 0;
+    this.peerStates.forEach(peer => {
+      const state = this.peerStates[peer]
+      if (state === undefined) return
+      if (state.reputation === null) {
+        delete this.peerStates[peer]
+        return
+      }
+      if (state.lastReceive !== null && this.oracle.reputationChange) this.oracle.reputationChange(peer, state.reputation)
+      netReputation += state.reputation;
+      state.reputation = null
+      if (this.peerStates[peer]) this.peerStates[peer].reputation = null
+    })
+    if (this.oracle.reputationChange) this.oracle.reputationChange(this.keyManager.address, 1)
+    if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
+    this.mempool = {}
 
-      let netReputation = 0;
-      this.peerStates.forEach(peer => {
-        const state = this.peerStates[peer]
-        if (state === undefined) return
-        if (state.reputation === null) {
-          delete this.peerStates[peer]
-          return
-        }
-        if (state.lastReceive !== null && this.oracle.reputationChange) this.oracle.reputationChange(peer, state.reputation)
-        netReputation += state.reputation;
-        state.reputation = null
-      })
-      if (this.oracle.reputationChange) this.oracle.reputationChange(this.keyManager.address, 1)
-      if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
-
-      this.mempool = {}
+    if (JSON.stringify(this.oracle.state.value) !== this.lastEpochState) {
       console.log(`[${this.name}]`, this.oracle.state.value)
       this.lastEpochState = JSON.stringify(this.oracle.state.value)
     }

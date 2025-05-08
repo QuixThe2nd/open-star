@@ -8,7 +8,11 @@ import { mode, parseEther } from "../utils"
 class NameServiceOracle {
   public state = new StateManager<ORC20State & { hostnames: Record<`${string}.star`, `0x${string}`> }>({ balances: {}, hostnames: {} })
   public readonly ORC20 = {
-    ticker: 'NS'
+    ticker: 'NS',
+    calculateAPR: () => {
+      const stakingRate = this.openStar.stakingRate()
+      return 0.05 * (1 - stakingRate * 0.5) / stakingRate * 100
+    }
   }
   public readonly epochTime = 30_000
   public readonly name = 'NAMESERVICE'
@@ -33,14 +37,8 @@ class NameServiceOracle {
     register: { from: `0x`, hostname: `.star`, signature: `0x` },
   }
 
-  blockYield(epochTime: number): number {
-    const stakingRate = this.openStar.stakingRate()
-    const stakingYield = 0.05 * (1 - stakingRate * 0.5) / stakingRate * 100
-    return Math.pow(stakingYield, 1 / ((365 * 24 * 60 * 60 * 1000) / epochTime)) - 1;
-  }
-
   public readonly reputationChange = (peer: `0x${string}`, reputation: number): void => {
-    const blockYield = this.blockYield(this.epochTime)
+    const blockYield = this.ORC20.calculateAPR() / (365 * 24 * 60 * 60 * 1000) / 5_000
     if (reputation > 0) {
       console.log('[NAMESERVICE] Rewarding', peer.slice(0, 8) + '...')
       this.openStar.mint({ to: peer, amount: (this.state.value.balances[peer] !== undefined ? BigInt(Math.floor(Number(this.state.value.balances[peer])*blockYield)) : parseEther(1)).toHex() })

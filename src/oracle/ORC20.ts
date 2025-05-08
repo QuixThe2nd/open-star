@@ -9,13 +9,13 @@ export class ORC20Oracle<OracleState extends ORC20State = ORC20State, OracleMeth
   circulatingSupply() {
     let supply = 0n
     const state = this.oracle.state.value as ORC20State
-    state.balances.forEach(peer => {
-      supply += BigInt(this.oracle.state.value.balances[peer] ?? `0x0`)
+    state.balances.forEach((_, balance) => {
+      supply += BigInt(balance)
     })
     return supply
   }
   stakedSupply() {
-    let coinsStaked = 0n
+    let coinsStaked = BigInt(this.oracle.state.value.balances[this.keyManager.address] ?? `0x0`)
     this.peerStates.forEach(peer => {
       coinsStaked += BigInt(this.oracle.state.value.balances[peer] ?? `0x0`)
     })
