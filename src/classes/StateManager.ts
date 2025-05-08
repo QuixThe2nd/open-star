@@ -1,6 +1,6 @@
 import { sortObjectByKeys } from "../utils"
 
-export class StateManager<OracleState> {
+export class StateManager<OracleState extends Record<string, unknown>> {
   private _value: OracleState
   private listeners: Array<(state: OracleState) => void> = []
   constructor(state: OracleState) {
@@ -10,7 +10,7 @@ export class StateManager<OracleState> {
     return this._value
   }
   set value(state: OracleState) {
-    this._value = typeof state === 'object' && state !== null ? sortObjectByKeys(state) : state
+    this._value = sortObjectByKeys(state)
     this.listeners.forEach(listener => { listener(this.value) })
   }
   public subscribe(listener: (state: OracleState) => void) {

@@ -2,15 +2,15 @@ import { StateManager } from "../classes/StateManager"
 import type { Oracle } from "../types/Oracle"
 import { mode } from "../utils"
 
-const state = new StateManager(0)
+const state = new StateManager({ number: 0 })
 const methods = {
   add: (args: { value: number, time: number }): string | void => {
     if (args.value <= 0) return 'Value must be positive'
-    state.value += args.value
+    state.value.number += args.value
   },
   subtract: (args: { value: number, time: number }): string | void => {
     if (args.value <= 0) return 'Value must be positive'
-    state.value -= args.value
+    state.value.number -= args.value
   }
 }
 const methodDescriptions = {
