@@ -5,9 +5,9 @@ import { ORC20Oracle } from '../oracle/ORC20';
 import { mode, parseEther } from '../utils';
 import type { NonEmptyArray } from '../types/generic';
 import type { ORC20State } from '../types/ORC20';
-import { test, testResults } from './test';
+import { test } from './test';
 
-export async function tests() {
+export async function ORC20Tests() {
   const openStar = new ORC20Oracle({
     name: 'TEST_COIN',
     epochTime: 5000,
@@ -77,10 +77,3 @@ export async function tests() {
     assert.equal(openStar.stakingRate(), 0.75);
   });
 }
-
-await tests();
-
-console.log(`\n--- Test Results ---`);
-console.log(`${testResults.passed} passed, ${testResults.failed} failed`);
-
-process.exit(testResults.failed > 0 ? 1 : 0);

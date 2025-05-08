@@ -46,7 +46,7 @@ class NameServiceOracle {
       this.openStar.mint({ to: peer, amount: (this.state.value.balances[peer] !== undefined ? BigInt(Math.floor(Number(this.state.value.balances[peer])*blockYield)) : parseEther(1)).toHex() })
     } else if (reputation < 0 && this.state.value.balances[peer] !== undefined) {
       console.log('[NAMESERVICE] Slashing', peer.slice(0, 8) + '...')
-      this.openStar.burn({ to: peer, amount: ((BigInt(this.state.value.balances[peer])*9n)/10n).toHex() })
+      this.openStar.burn({ to: peer, amount: ((BigInt(this.state.value.balances[peer] ?? `0x0`)*9n)/10n).toHex() })
     }
   }
 

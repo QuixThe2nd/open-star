@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx src/client.ts",
-    "test": "tsx src/tests/ORC20.ts",
+    "test": "tsx src/tests/tests.ts",
     "type-check": "tsc --project tsconfig.json",
     "lint": "eslint . --fix"
   },

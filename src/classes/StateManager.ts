@@ -6,12 +6,12 @@ export class StateManager<OracleState extends Record<string, unknown>> {
   constructor(state: OracleState) {
     this._value = state
   }
-  get value() {
+  get value(): Readonly<OracleState> {
     return this._value
   }
-  set value(state: OracleState) {
+  set(state: OracleState) {
     this._value = sortObjectByKeys(state)
-    this.listeners.forEach(listener => { listener(this.value) })
+    this.listeners.forEach(listener => listener(this._value))
   }
   public subscribe(listener: (state: OracleState) => void) {
     this.listeners.push(listener)
