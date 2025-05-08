@@ -12,7 +12,7 @@ export type Message<OracleName extends string, OracleMethods extends Record<stri
 export type PeerStates<State> = Record<`0x${string}`, { lastSend: null | State; lastReceive: null | State; reputation: number | null }>;
 export type MempoolItem<M extends Methods<any>> = { method: keyof M, args: Parameters<M[keyof M]>[0] }
 
-export type Oracle<OracleState, OracleMethods extends Record<string, (arg: any) => MethodReturn>, OracleName extends string = string> = {
+export type Oracle<OracleState extends Record<string, unknown> = Record<string, unknown>, OracleMethods extends Record<string, (arg: any) => MethodReturn> = Record<string, (arg: any) => MethodReturn>, OracleName extends string = string> = {
   name: OracleName
   state: StateManager<OracleState>,
   epochTime: number

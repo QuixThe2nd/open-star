@@ -4,7 +4,7 @@ import type { NonEmptyArray } from "../types/generic";
 import type { MethodReturn, PingPongMessage, Oracle, PeerStates, MempoolItem, Message } from "../types/Oracle";
 import { isHexAddress } from "../utils";
 
-export class OpenStar<OracleState, OracleMethods extends Record<string, (arg: any) => MethodReturn>, OracleName extends string> {
+export class OpenStar<OracleState extends Record<string, unknown> = Record<string, unknown>, OracleMethods extends Record<string, (arg: any) => MethodReturn> = Record<string, (arg: any) => MethodReturn>, OracleName extends string = string> {
   public readonly signalling: Signalling<Message<OracleName, OracleMethods, OracleState> | PingPongMessage>
   private epochCount = -1
   readonly keyManager: KeyManager
