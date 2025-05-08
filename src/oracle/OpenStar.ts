@@ -109,7 +109,7 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
       if (state.lastReceive !== null && this.oracle.reputationChange) this.oracle.reputationChange(peer, state.reputation)
       netReputation += state.reputation;
       state.reputation = null
-      if (this.peerStates[peer]) this.peerStates[peer].reputation = 0
+      if (this.peerStates[peer]) this.peerStates[peer].reputation = null
     })
     if (this.oracle.reputationChange) this.oracle.reputationChange(this.keyManager.address, 1)
     if (netReputation < 0) console.warn('Net reputation is negative, you may be out of sync')
