@@ -11,7 +11,7 @@ export async function ORC20Tests() {
   const openStar = new ORC20Oracle({
     name: 'TEST_COIN',
     epochTime: 5000,
-    ORC20: { ticker: 'TEST' },
+    ORC20: { ticker: 'TEST', calculateAPR: () => { return 0 } },
     state: new StateManager<ORC20State>({ balances: {} }),
     startupState: (peerStates: NonEmptyArray<ORC20State>) => mode(peerStates)
   }, new KeyManager('tests'));

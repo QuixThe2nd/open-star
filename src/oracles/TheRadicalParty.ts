@@ -18,16 +18,15 @@ const methodDescriptions: { [K in keyof typeof methods]: Parameters<typeof metho
 }
 const startupState = (peerStates: NonEmptyArray<typeof state.value>) => mode(peerStates)
 const transactionToID = <T extends keyof typeof methods>(method: T, args: Parameters<typeof methods[T]>[0]) => `${method}-${JSON.stringify(args)}`
-const ORC20 = { ticker: "RAD" }
+const ORC20 = { ticker: "RAD", calculateAPR }
 
-function calculateBlockYield(epochTime: number): number {
+function calculateAPR(): number {
   const stakingRate = openStar.stakingRate()
-  const stakingYield = 0.05 * (1 - stakingRate * 0.5) / stakingRate * 100
-  return Math.pow(stakingYield, 1 / ((365 * 24 * 60 * 60 * 1000) / epochTime)) - 1;
+  return 0.05 * (1 - stakingRate * 0.5) / stakingRate
 }
 
 function reputationChange(peer: `0x${string}`, reputation: number) {
-  const blockYield = calculateBlockYield(15_000)
+  const blockYield = calculateAPR() / (365 * 24 * 60 * 60 * 1000) / 5_000
   const balance = state.value.balances[peer]
   if (reputation > 0) {
     console.log('[COIN] Rewarding', peer.slice(0, 8) + '...')

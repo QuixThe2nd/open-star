@@ -6,15 +6,13 @@ import { mode, parseEther } from "../utils"
 
 const state = new StateManager<ORC20State>({ balances: {} })
 
-function calculateEpochYield(epochTime: number): number {
+function calculateAPR(): number {
   const stakingRate = openStar.stakingRate()
-  const stakingAPR = 0.05 * (1 - stakingRate * 0.5) / stakingRate
-  const epochsPerYear = (365 * 24 * 60 * 60 * 1000) / epochTime
-  return stakingAPR / epochsPerYear
+  return 0.05 * (1 - stakingRate * 0.5) / stakingRate
 }
 
 const reputationChange = (peer: `0x${string}`, reputation: number): void => {
-  const blockYield = calculateEpochYield(5_000)
+  const blockYield = calculateAPR() / (365 * 24 * 60 * 60 * 1000) / 5_000
   if (reputation > 0) {
     console.log('[COIN] Rewarding', peer.slice(0, 8) + '...')
     openStar.mint({ to: peer, amount: (state.value.balances[peer] !== undefined ? BigInt(Math.floor(Number(state.value.balances[peer])*blockYield)) : parseEther(100)).toHex() });
@@ -32,7 +30,7 @@ const setOpenStar = (newOpenStar: ORC20Oracle<ORC20State, Record<string, never>>
 const oracle: Oracle<typeof state.value, Record<string, never>> = {
   name: 'COIN',
   epochTime: 5_000,
-  ORC20: { ticker: 'STAR' },
+  ORC20: { ticker: 'STAR', calculateAPR },
   transactionToID: (method, args) => `${method}-${JSON.stringify(args)}`,
   startupState: (peerStates) => mode(peerStates),
   state,
