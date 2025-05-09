@@ -31,7 +31,7 @@ export class Signalling<Message> {
       (async () => {
         const res = await fetch("https://raw.githubusercontent.com/pradt2/always-online-stun/master/valid_hosts.txt")
         const hosts = await res.text()
-        hosts.trim().split("\n").map(url => this.stunServers.push({ urls: `stun:${url}` }))
+        hosts.trim().split("\n").slice(0, 10).map(url => this.stunServers.push({ urls: `stun:${url}` }))
         this.sendWSMessage({ announce: true, from: this.keyManager.address });
       })().catch(console.error)
     };
