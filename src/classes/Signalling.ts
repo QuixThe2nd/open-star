@@ -28,13 +28,13 @@ export class Signalling<Message> {
     this.ws.onopen = () => {
       console.log(`Announcing to ${this.ws.url}`);
 
-      (async () => {
-        const res = await fetch("https://raw.githubusercontent.com/pradt2/always-online-stun/master/valid_hosts.txt")
-        const hosts = await res.text()
-        hosts.trim().split("\n").slice(0, 10).map(url => this.stunServers.push({ urls: `stun:${url}` }))
-        this.sendWSMessage({ announce: true, from: this.keyManager.address });
-      })().catch(console.error)
-    };
+    //   (async () => {
+    //     const res = await fetch("https://raw.githubusercontent.com/pradt2/always-online-stun/master/valid_ipv4s.txt")
+    //     const hosts = await res.text()
+        // hosts.trim().split("\n").slice(0, 10).map(url => this.stunServers.push({ urls: `stun:${url}` }))
+      this.sendWSMessage({ announce: true, from: this.keyManager.address })
+    //   })().catch(console.error)
+    }
 
     this.ws.onmessage = (event: MessageEvent): void => {
       if (typeof event.data !== 'string') return console.error('WS message is not a string')
