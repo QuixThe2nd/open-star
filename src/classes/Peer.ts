@@ -2,6 +2,7 @@ import type { RTCSessionDescription } from "@roamhq/wrtc";
 import type { RTCObjectType, SignallingMessage } from "../types/Signalling";
 import WRTC from '@roamhq/wrtc'
 import type { KeyManager } from "./KeyManager";
+import { isHexAddress } from "../utils";
 
 const rtcObjects: RTCObjectType = typeof window === 'undefined' ? WRTC as RTCObjectType : { RTCPeerConnection: window.RTCPeerConnection };
 const { RTCPeerConnection } = rtcObjects;
@@ -14,10 +15,10 @@ export class Peer<Message> {
   private readonly sendWSMessage: (message: SignallingMessage) => void
   private readonly onMessage: (_data: Message, _from: `0x${string}`, _callback: (_message: Message) => void) => void
 
-  constructor(selfAddress: `0x${string}`, peerAddress: `0x${string}`, sendWSMessage: typeof this.sendWSMessage, keyManager: KeyManager, onMessage: typeof this.onMessage, onConnect: () => void) {
+  constructor(keyManager: KeyManager, peerAddress: `0x${string}`, sendWSMessage: typeof this.sendWSMessage, onMessage: typeof this.onMessage, onConnect: () => void) {
     this.sendWSMessage = sendWSMessage
     this.onMessage = onMessage
-    this.selfAddress = selfAddress
+    this.selfAddress = keyManager.address
     this.peerAddress = peerAddress
     this.conn = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] });
     this.channel = this.conn.createDataChannel("chat", { negotiated: true, id: 0 });
@@ -27,17 +28,19 @@ export class Peer<Message> {
       if (this.conn.signalingState !== "stable") return;
       await this.conn.setLocalDescription(offer);
       if (!this.conn.localDescription) return console.error('Failed to fetch local description')
-      sendWSMessage({ description: this.conn.localDescription, to: peerAddress, from: selfAddress });
+      sendWSMessage({ description: this.conn.localDescription, to: peerAddress, from: this.selfAddress });
     }
     this.conn.onicecandidate = (event) => {
-      if (event.candidate !== null) sendWSMessage({ iceCandidate: event.candidate, to: peerAddress, from: selfAddress });
+      if (event.candidate !== null) sendWSMessage({ iceCandidate: event.candidate, to: peerAddress, from: this.selfAddress });
     };
-    this.channel.onmessage = (e) => {
+    this.channel.onmessage = async (e) => {
       if (typeof e.data !== 'string') return console.error('WebRTC Message not a string')
       const data: unknown = JSON.parse(e.data)
       console.log(`Received WebRTC message`, data);
       if (typeof data !== 'object' || data === null || !('message' in data)) return console.error('WebRTC Message invalid 1')
       if (!('signature' in data)) return console.error('WebRTC Message invalid 2')
+      if (!isHexAddress(data.signature)) return console.error('Signature is not hex')
+      if (!(await keyManager.verify(data.signature, JSON.stringify(data.message), peerAddress))) return console.error('Invalid message signature')
       this.onMessage(data.message as Message, peerAddress, (responseMessage: Message) => this.channel.send(JSON.stringify({ message: responseMessage, signature: keyManager.sign(JSON.stringify(responseMessage)) })));
     };
     this.conn.oniceconnectionstatechange = () => {

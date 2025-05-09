@@ -37,9 +37,9 @@ export class Signalling<Message> {
       if (message.from === this.keyManager.address) return console.error('Message is from self')
       if ('to' in message && message.to !== this.keyManager.address) return console.error('Message is for someone else', message)
 
-      if ('announce' in message) this.peers[message.from] = new Peer<Message>(this.keyManager.address, message.from, (message: SignallingMessage) => this.sendWSMessage(message), this.keyManager, (data: Message, from: `0x${string}`, callback: (message: Message) => void) => this.onMessage(data, from, callback), () => this.onConnect());
+      if ('announce' in message) this.peers[message.from] = new Peer<Message>(this.keyManager, message.from, (message: SignallingMessage) => this.sendWSMessage(message), (data: Message, from: `0x${string}`, callback: (message: Message) => void) => this.onMessage(data, from, callback), () => this.onConnect());
       else if ('description' in message) {
-        const peer = this.peers[message.from] ??= new Peer<Message>(this.keyManager.address, message.from, (message: SignallingMessage) => this.sendWSMessage(message), this.keyManager, (data: Message, from: `0x${string}`, callback: (message: Message) => void) => this.onMessage(data, from, callback), () => this.onConnect());
+        const peer = this.peers[message.from] ??= new Peer<Message>(this.keyManager, message.from, (message: SignallingMessage) => this.sendWSMessage(message), (data: Message, from: `0x${string}`, callback: (message: Message) => void) => this.onMessage(data, from, callback), () => this.onConnect());
         peer.setRemoteDescription(message.description as RTCSessionDescription).catch(console.error);
       } else if ('iceCandidate' in message) {
         const peerConn = this.peers[message.from]
