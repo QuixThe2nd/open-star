@@ -41,14 +41,14 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
       if (this.connectHandler !== undefined) this.connectHandler()
       this.connected = true
       console.log(`[${this.name}] Connected`)
-      this.sendState().catch(console.error)
+      this.sendState()
       let peerStates: OracleState[] = []
       while (peerStates.length === 0) {
         await new Promise((resolve) => setTimeout(resolve, 100))
         peerStates = Object.values(this.peerStates).map(state => state.lastReceive).filter(state => state !== null)
       }
       this.oracle.state.set(await this.oracle.startupState(peerStates as NonEmptyArray<OracleState>))
-      this.sendState().catch(console.error)
+      this.sendState()
 
       const startTime = +new Date();
       await new Promise((resolve) => setTimeout(resolve, (Math.floor(startTime / this.oracle.epochTime) + 1) * this.oracle.epochTime - startTime))
@@ -57,7 +57,7 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
     }
   }
 
-  public readonly onMessage = async (message: Message<OracleName, OracleMethods, OracleState> | PingPongMessage, from: `0x${string}`, callback: (_message: Message<OracleName, OracleMethods, OracleState> | PingPongMessage) => void): Promise<void> => {
+  public readonly onMessage = (message: Message<OracleName, OracleMethods, OracleState> | PingPongMessage, from: `0x${string}`, callback: (_message: Message<OracleName, OracleMethods, OracleState> | PingPongMessage) => void): void => {
     console.log(`[${message[0].toUpperCase()}] Received message: ${message[1]} from ${from.slice(0, 8)}...`)
     if (message[0] === 'ping') callback(['pong']);
     else if (message[0] === 'pong') console.log('pong')
@@ -83,12 +83,12 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
           const { signature, ...args } = message[3]
           if (!isHexAddress(signature)) return console.error('Invalid signature')
           if (!isHexAddress(args['from'])) return console.error('Invalid signature')
-          if (!await this.keyManager.verify(signature, JSON.stringify(args), args['from'])) return console.error('Invalid signature')
+          if (!this.keyManager.verify(signature, JSON.stringify(args), args['from'])) return console.error('Invalid signature')
         }
 
         if (Object.keys(this.mempool).includes(id)) return console.error('Transaction already in mempool.')
         this.mempool[id] = { method: message[2], args: message[3] }
-        this.sendMessage([ this.name, 'call', message[2], message[3] ]).catch(console.error)
+        this.sendMessage([ this.name, 'call', message[2], message[3] ])
         Promise.resolve(this.call(message[2], message[3])).then(() => console.log(this.oracle.state.value)).catch(console.error)
       }
     }
@@ -120,12 +120,12 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
       this.lastEpochState = JSON.stringify(this.oracle.state.value)
     }
 
-    this.sendState().catch(console.error)
+    this.sendState()
   }
 
   private readonly call = async <T extends keyof OracleMethods>(method: T, args: Parameters<OracleMethods[T]>[0]): Promise<string | void> => {
     if ('methods' in this.oracle) await this.oracle.methods[method]?.(args)
   }
-  private readonly sendState = async () => this.signalling.sendMessage([this.name, 'state', this.oracle.state.value]);
-  public readonly sendMessage = async (message: Message<OracleName, OracleMethods, OracleState>) => this.signalling.sendMessage(message);
+  private readonly sendState = () => this.signalling.sendMessage([this.name, 'state', this.oracle.state.value]);
+  public readonly sendMessage = (message: Message<OracleName, OracleMethods, OracleState>) => this.signalling.sendMessage(message);
 }

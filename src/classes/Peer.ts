@@ -34,14 +34,14 @@ export class Peer<Message> {
     this.conn.onicecandidate = (event) => {
       if (event.candidate !== null) sendWSMessage({ iceCandidate: event.candidate, to: peerAddress, from: this.selfAddress });
     };
-    this.channel.onmessage = async (e) => {
+    this.channel.onmessage = (e) => {
       if (typeof e.data !== 'string') return console.error('WebRTC Message not a string')
       const data: unknown = JSON.parse(e.data)
-      console.log(`Received WebRTC message`, data);
       if (typeof data !== 'object' || data === null || !('message' in data)) return console.error('WebRTC Message invalid 1')
       if (!('signature' in data)) return console.error('WebRTC Message invalid 2')
       if (!isHexAddress(data.signature)) return console.error('Signature is not hex')
-      if (!(await keyManager.verify(data.signature, JSON.stringify(data.message), peerAddress))) return console.error('Invalid message signature')
+      if (!(keyManager.verify(data.signature, JSON.stringify(data.message), peerAddress))) return console.error('Invalid message signature')
+      console.log(`Received WebRTC message`, data);
       this.onMessage(data.message as Message, peerAddress, (responseMessage: Message) => this.channel.send(JSON.stringify({ message: responseMessage, signature: keyManager.sign(JSON.stringify(responseMessage)) })));
     };
     this.conn.oniceconnectionstatechange = () => {

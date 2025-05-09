@@ -19,14 +19,14 @@ class NameServiceOracle {
   openStar!: ORC20Oracle<typeof this.state.value, typeof this.methods>
 
   readonly methods = {
-    register: async (args: { from: `0x${string}`, hostname: `${string}.star`, signature: `0x${string}` }): Promise<void | string> => {
+    register: (args: { from: `0x${string}`, hostname: `${string}.star`, signature: `0x${string}` }): void | string => {
       if (this.state.value.hostnames[args.hostname] !== undefined) return 'Hostname unavailable'
 
       const balance = this.state.value.balances[args.from]
       if (balance === undefined) return 'No balance'
       if (BigInt(balance) < parseEther(1)) return 'Balance too low'
-      if (!await this.openStar.keyManager.verify(args.signature, JSON.stringify({ from: args.from, hostname: args.hostname }), args.from)) return 'Invalid signature'
-      this.state.value.balances[args.from] = (BigInt(balance) - parseEther(0.1)).toHex()
+      if (!this.openStar.keyManager.verify(args.signature, JSON.stringify({ from: args.from, hostname: args.hostname }), args.from)) return 'Invalid signature'
+      this.state.value.balances[args.from] = (BigInt(balance) - parseEther(0.1)).toHex().value
 
       this.state.value.hostnames[args.hostname] = args.from
       console.log(`[NAMESERVICE] Registered ${args.hostname} to ${args.from}`)
@@ -41,10 +41,10 @@ class NameServiceOracle {
     const blockYield = this.ORC20.calculateAPR() / (365 * 24 * 60 * 60 * 1000) / 5_000
     if (reputation > 0) {
       console.log('[NAMESERVICE] Rewarding', peer.slice(0, 8) + '...')
-      this.openStar.mint({ to: peer, amount: (this.state.value.balances[peer] !== undefined ? BigInt(Math.floor(Number(this.state.value.balances[peer])*blockYield)) : parseEther(1)).toHex() })
+      this.openStar.mint({ to: peer, amount: (this.state.value.balances[peer] !== undefined ? BigInt(Math.floor(Number(this.state.value.balances[peer])*blockYield)) : parseEther(1)).toHex().value })
     } else if (reputation < 0 && this.state.value.balances[peer] !== undefined) {
       console.log('[NAMESERVICE] Slashing', peer.slice(0, 8) + '...')
-      this.openStar.burn({ to: peer, amount: ((BigInt(this.state.value.balances[peer] ?? `0x0`)*9n)/10n).toHex() })
+      this.openStar.burn({ to: peer, amount: ((BigInt(this.state.value.balances[peer] ?? `0x0`)*9n)/10n).toHex().value })
     }
   }
 

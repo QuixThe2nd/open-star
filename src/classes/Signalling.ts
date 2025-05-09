@@ -72,8 +72,8 @@ export class Signalling<Message> {
     }
   }
 
-  public async sendMessage(message: Message): Promise<void> {
-    const signature = await this.keyManager.sign(JSON.stringify(message));
+  public sendMessage(message: Message) {
+    const signature = this.keyManager.sign(JSON.stringify(message));
     this.peers.forEach((_, peer) => peer.send({ message, signature }))
   }
 }
