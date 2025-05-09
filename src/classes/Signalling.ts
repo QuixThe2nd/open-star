@@ -34,7 +34,8 @@ export class Signalling<Message> {
       const message: unknown = JSON.parse(event.data);
       if (typeof message !== 'object' || message === null) return console.error('Failed to decode WS message')
       if (!('from' in message) || !isHexAddress(message.from)) return console.error('Invalid from address')
-      if (!('to' in message) || message.to !== this.keyManager.address) return console.error('Message is for someone else')
+      if (message.from === this.keyManager.address) return console.error('Message is from self')
+      if ('to' in message && message.to !== this.keyManager.address) return console.error('Message is for someone else', message)
 
       if ('announce' in message) this.peers[message.from] = new Peer<Message>(this.keyManager.address, message.from, (message: SignallingMessage) => this.sendWSMessage(message), this.keyManager, (data: Message, from: `0x${string}`, callback: (message: Message) => void) => this.onMessage(data, from, callback), () => this.onConnect());
       else if ('description' in message) {
