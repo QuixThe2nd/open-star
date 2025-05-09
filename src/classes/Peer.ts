@@ -9,10 +9,10 @@ const { RTCPeerConnection } = rtcObjects;
 export class Peer<Message> {
   private readonly conn: RTCPeerConnection
   private readonly channel: RTCDataChannel
-  private readonly onMessage: (_data: Message, _from: `0x${string}`, _callback: (_message: Message) => void) => void
   private readonly selfAddress: `0x${string}`
   private readonly peerAddress: `0x${string}`
   private readonly sendWSMessage: (message: SignallingMessage) => void
+  private readonly onMessage: (_data: Message, _from: `0x${string}`, _callback: (_message: Message) => void) => void
 
   constructor(selfAddress: `0x${string}`, peerAddress: `0x${string}`, sendWSMessage: typeof this.sendWSMessage, keyManager: KeyManager, onMessage: typeof this.onMessage, onConnect: () => void) {
     this.sendWSMessage = sendWSMessage
@@ -29,7 +29,6 @@ export class Peer<Message> {
       if (!this.conn.localDescription) return console.error('Failed to fetch local description')
       sendWSMessage({ description: this.conn.localDescription, to: peerAddress, from: selfAddress });
     }
-    
     this.conn.onicecandidate = (event) => {
       if (event.candidate !== null) sendWSMessage({ iceCandidate: event.candidate, to: peerAddress, from: selfAddress });
     };
@@ -49,8 +48,13 @@ export class Peer<Message> {
     this.conn.onsignalingstatechange = () => console.log(`Signaling state changed: ${this.conn.signalingState}`);
     this.conn.onicegatheringstatechange = () => console.log(`ICE gathering state: ${this.conn.iceGatheringState}`);
     this.conn.onicecandidateerror = (e) => console.error('Ice candidate error', e)
-    this.channel.onerror = (error) => console.error('Data channel error:', error);
+    this.channel.onerror = (e) => console.error('Data channel error:', e);
     this.channel.onclose = () => console.log('Data channel closed');
+    this.channel.onbufferedamountlow = () => console.log('Data channel bufferedamountlow')
+    this.channel.onclosing = () => console.log('Data channel closing')
+    this.conn.onconnectionstatechange = () => console.log('on connectionstatechange')
+    this.conn.ondatachannel = () => console.log('on datachannel')
+    this.conn.ontrack = () => console.log('on track')
   }
 
   setRemoteDescription = async (sdp: RTCSessionDescription): Promise<void> => {
