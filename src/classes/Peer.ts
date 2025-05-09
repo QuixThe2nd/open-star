@@ -57,7 +57,7 @@ export class Peer<Message> {
     this.channel.onclose = () => console.log('Data channel closed');
     this.channel.onbufferedamountlow = () => console.log('Data channel bufferedamountlow')
     this.channel.onclosing = () => console.log('Data channel closing')
-    this.conn.onconnectionstatechange = () => console.log('on connectionstatechange')
+    this.conn.onconnectionstatechange = () => console.log(`Connect state changed: ${this.conn.connectionState}`);
     this.conn.ondatachannel = () => console.log('on datachannel')
     this.conn.ontrack = () => console.log('on track')
   }

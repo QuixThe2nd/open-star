@@ -73,8 +73,9 @@ export class Signalling<Message> {
   }
 
   public sendMessage(message: Message) {
-    const signature = this.keyManager.sign(JSON.stringify(message));
-    this.peers.forEach((_, peer) => peer.send({ message, signature }))
+    const payload = { message, signature: this.keyManager.sign(JSON.stringify(message)) }
+    console.log('Sending WebRTC message', payload)
+    this.peers.forEach((_, peer) => peer.send(payload))
   }
 }
 
