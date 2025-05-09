@@ -1,6 +1,8 @@
+import type { Hex } from "../classes/Hex";
+
 declare global {
   interface BigInt {
-    toHex: () => `0x${string}`;
+    toHex: () => Hex;
   }
   interface Object {
     forEach: <T extends object, R>(this: T, callback: (key: keyof T, value: T[keyof T]) => R) => R[];

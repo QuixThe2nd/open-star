@@ -14,8 +14,8 @@ const methods = {
   addLiquidity: ({ token, address, openStarLiquidity, tokenLiquidity }: { token: keyof LiquidityPool, address: `0x${string}`, openStarLiquidity: `0x${string}`, tokenLiquidity: `0x${string}` }): string | void => {
     const stateValue = state.value
     stateValue.pools[token] ??= {
-      openStarLiquidity: parseEther(1).toHex(),
-      tokenLiquidity: parseEther(1).toHex(),
+      openStarLiquidity: parseEther(1).toHex().value,
+      tokenLiquidity: parseEther(1).toHex().value,
       share: { "0x": 1 }
     }
 
@@ -42,8 +42,8 @@ const methods = {
       else updatedShares[existingAddress] = existingShare * (1 - liquidityShareRatio)
     })
 
-    stateValue.pools[token].openStarLiquidity = totalOpenStarLiquidity.toHex()
-    stateValue.pools[token].tokenLiquidity = totalTokenLiquidity.toHex()
+    stateValue.pools[token].openStarLiquidity = totalOpenStarLiquidity.toHex().value
+    stateValue.pools[token].tokenLiquidity = totalTokenLiquidity.toHex().value
     stateValue.pools[token].share = updatedShares
     state.set(stateValue)
   },

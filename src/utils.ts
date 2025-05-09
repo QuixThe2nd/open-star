@@ -1,3 +1,4 @@
+import { Hex } from "./classes/Hex";
 import type { NonEmptyArray } from "./types/generic";
 
 export function formatEther(value: bigint): number {
@@ -22,9 +23,8 @@ export function sortObjectByKeys<T extends object>(obj: T): T {
   return sortedObj as T;
 }
 
-BigInt.prototype.toHex = function(): `0x${string}` {
-  if (Number(this) < 0) throw new Error('Negative bigint')
-  return `0x${this.toString(16)}`;
+BigInt.prototype.toHex = function(): Hex {
+  return Hex.fromBigInt(this as bigint)
 };
 
 Object.prototype.forEach = function <T extends object, R>(this: T, callback: (key: keyof T, value: T[keyof T]) => R) {
