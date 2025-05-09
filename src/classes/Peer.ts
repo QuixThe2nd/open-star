@@ -43,7 +43,7 @@ export class Peer<Message> {
       if (!isHexAddress(data.signature)) return console.error('Signature is not hex')
       if (!(keyManager.verify(data.signature, JSON.stringify(data.message), peerAddress))) return console.error('Invalid message signature')
       console.log(`Received WebRTC message`, data);
-      this.onMessage(data.message as Message, peerAddress, (responseMessage: Message) => this.channel.send(JSON.stringify({ message: responseMessage, signature: keyManager.sign(JSON.stringify(responseMessage)) })));
+      this.onMessage(data.message as Message, peerAddress, (responseMessage: Message) => this.send({ message: responseMessage, signature: keyManager.sign(JSON.stringify(responseMessage)) }));
     };
     this.conn.oniceconnectionstatechange = () => {
       console.log(`ICE connection state: ${this.conn.iceConnectionState}`);
@@ -79,5 +79,8 @@ export class Peer<Message> {
   }
   
   addIceCandidate = async (iceCandidate: RTCIceCandidateInit): Promise<void> => this.conn.addIceCandidate(iceCandidate);
-  send = (message: { message: Message, signature: `0x${string}` }) => this.channel.send(JSON.stringify(message))
+  send = (message: { message: Message, signature: `0x${string}` }) => {
+    if (this.channel.readyState === 'open') this.channel.send(JSON.stringify(message));
+    else console.warn(`Cannot send message, data channel not open (state: ${this.channel.readyState})`);
+  }
 }
