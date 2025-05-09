@@ -39,7 +39,6 @@ export class Peer<Message> {
       const data: unknown = JSON.parse(e.data)
       if (typeof data !== 'object' || data === null || !('message' in data)) return console.error('WebRTC Message invalid 1')
       if (!('signature' in data)) return console.error('WebRTC Message invalid 2')
-      console.log(data)
       if (!isHexAddress(data.signature)) return console.error('Signature is not hex')
       if (!(keyManager.verify(data.signature, JSON.stringify(data.message), peerAddress))) return console.error('Invalid message signature')
       console.log(`Received WebRTC message`, data);
