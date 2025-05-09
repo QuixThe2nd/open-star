@@ -1,11 +1,11 @@
-import type { RTCSessionDescription } from "@roamhq/wrtc";
-import type { RTCObjectType, SignallingMessage } from "../types/Signalling";
+import type { RTCSessionDescription } from "@roamhq/wrtc"
+import type { RTCObjectType, SignallingMessage } from "../types/Signalling"
 import WRTC from '@roamhq/wrtc'
-import type { KeyManager } from "./KeyManager";
-import { isHexAddress } from "../utils";
+import type { KeyManager } from "./KeyManager"
+import { isHexAddress } from "../utils"
 
-const rtcObjects: RTCObjectType = typeof window === 'undefined' ? WRTC as RTCObjectType : { RTCPeerConnection: window.RTCPeerConnection };
-const { RTCPeerConnection } = rtcObjects;
+const rtcObjects: RTCObjectType = typeof window === 'undefined' ? WRTC as RTCObjectType : { RTCPeerConnection: window.RTCPeerConnection }
+const { RTCPeerConnection } = rtcObjects
 
 export class Peer<Message> {
   private readonly conn: RTCPeerConnection
@@ -21,19 +21,19 @@ export class Peer<Message> {
     this.selfAddress = keyManager.address
     this.peerAddress = peerAddress
 
-    this.conn = new RTCPeerConnection({ iceServers });
-    this.channel = this.conn.createDataChannel("chat", { negotiated: true, id: 0 });
+    this.conn = new RTCPeerConnection({ iceServers })
+    this.channel = this.conn.createDataChannel("chat", { negotiated: true, id: 0 })
 
     this.conn.onnegotiationneeded = async () => {
-      const offer = await this.conn.createOffer();
-      if (this.conn.signalingState !== "stable") return;
-      await this.conn.setLocalDescription(offer);
+      const offer = await this.conn.createOffer()
+      if (this.conn.signalingState !== "stable") return
+      await this.conn.setLocalDescription(offer)
       if (!this.conn.localDescription) return console.error('Failed to fetch local description')
-      sendWSMessage({ description: this.conn.localDescription, to: peerAddress, from: this.selfAddress });
+      sendWSMessage({ description: this.conn.localDescription, to: peerAddress, from: this.selfAddress })
     }
     this.conn.onicecandidate = (event) => {
-      if (event.candidate !== null) sendWSMessage({ iceCandidate: event.candidate, to: peerAddress, from: this.selfAddress });
-    };
+      if (event.candidate !== null) sendWSMessage({ iceCandidate: event.candidate, to: peerAddress, from: this.selfAddress })
+    }
     this.channel.onmessage = (e) => {
       if (typeof e.data !== 'string') return console.error('WebRTC Message not a string')
       const data: unknown = JSON.parse(e.data)
@@ -41,45 +41,45 @@ export class Peer<Message> {
       if (!('signature' in data)) return console.error('WebRTC Message invalid 2')
       if (!isHexAddress(data.signature)) return console.error('Signature is not hex')
       if (!(keyManager.verify(data.signature, JSON.stringify(data.message), peerAddress))) return console.error('Invalid message signature')
-      console.log(`Received WebRTC message`, data);
-      this.onMessage(data.message as Message, peerAddress, (responseMessage: Message) => this.send({ message: responseMessage, signature: keyManager.sign(JSON.stringify(responseMessage)) }));
-    };
+      console.log(`Received WebRTC message`, data)
+      this.onMessage(data.message as Message, peerAddress, (responseMessage: Message) => this.send({ message: responseMessage, signature: keyManager.sign(JSON.stringify(responseMessage)) }))
+    }
     this.conn.oniceconnectionstatechange = () => {
-      console.log(`ICE connection state: ${this.conn.iceConnectionState}`);
-      if (this.conn.iceConnectionState === 'failed') this.conn.restartIce();
-    };
+      console.log(`ICE connection state: ${this.conn.iceConnectionState}`)
+      if (this.conn.iceConnectionState === 'failed') this.conn.restartIce()
+    }
     this.channel.onopen = () => onConnect()
-    this.conn.onsignalingstatechange = () => console.log(`Signaling state changed: ${this.conn.signalingState}`);
-    this.conn.onicegatheringstatechange = () => console.log(`ICE gathering state: ${this.conn.iceGatheringState}`);
+    this.conn.onsignalingstatechange = () => console.log(`Signaling state changed: ${this.conn.signalingState}`)
+    this.conn.onicegatheringstatechange = () => console.log(`ICE gathering state: ${this.conn.iceGatheringState}`)
     this.conn.onicecandidateerror = (e) => console.error('Ice candidate error', e.errorText)
-    this.channel.onerror = (e) => console.error('Data channel error:', e);
-    this.channel.onclose = () => console.log('Data channel closed');
+    this.channel.onerror = (e) => console.error('Data channel error:', e)
+    this.channel.onclose = () => console.log('Data channel closed')
     this.channel.onbufferedamountlow = () => console.log('Data channel bufferedamountlow')
     this.channel.onclosing = () => console.log('Data channel closing')
-    this.conn.onconnectionstatechange = () => console.log(`Connect state changed: ${this.conn.connectionState}`);
+    this.conn.onconnectionstatechange = () => console.log(`Connect state changed: ${this.conn.connectionState}`)
     this.conn.ondatachannel = () => console.log('on datachannel')
     this.conn.ontrack = () => console.log('on track')
   }
 
   setRemoteDescription = async (sdp: RTCSessionDescription): Promise<void> => {
-    console.log(`Setting remote description, type: ${sdp.type}, current state: ${this.conn.signalingState}`);
+    console.log(`Setting remote description, type: ${sdp.type}, current state: ${this.conn.signalingState}`)
     if (sdp.type === "offer" && this.conn.signalingState !== "stable") {
-      if (this.peerAddress > this.selfAddress) return;
-      await Promise.all([ this.conn.setLocalDescription({type: "rollback"}), this.conn.setRemoteDescription(sdp) ]);
-    } else await this.conn.setRemoteDescription(sdp);
+      if (this.peerAddress > this.selfAddress) return
+      await Promise.all([ this.conn.setLocalDescription({type: "rollback"}), this.conn.setRemoteDescription(sdp) ])
+    } else await this.conn.setRemoteDescription(sdp)
     
     if (sdp.type === "offer") {
-      console.log("Creating answer...");
-      await this.conn.setLocalDescription(await this.conn.createAnswer());
-      const description = this.conn.localDescription;
-      if (!description) return console.error('Failed to fetch local description');
-      this.sendWSMessage({ description, from: this.selfAddress, to: this.peerAddress });
+      console.log("Creating answer...")
+      await this.conn.setLocalDescription(await this.conn.createAnswer())
+      const description = this.conn.localDescription
+      if (!description) return console.error('Failed to fetch local description')
+      this.sendWSMessage({ description, from: this.selfAddress, to: this.peerAddress })
     }
   }
   
-  addIceCandidate = async (iceCandidate: RTCIceCandidateInit): Promise<void> => this.conn.addIceCandidate(iceCandidate);
+  addIceCandidate = async (iceCandidate: RTCIceCandidateInit): Promise<void> => this.conn.addIceCandidate(iceCandidate)
   send = (message: { message: Message, signature: `0x${string}` }) => {
-    if (this.channel.readyState === 'open') this.channel.send(JSON.stringify(message));
-    else console.warn(`Cannot send message, data channel not open (state: ${this.channel.readyState})`);
+    if (this.channel.readyState === 'open') this.channel.send(JSON.stringify(message))
+    else console.warn(`Cannot send message, data channel not open (state: ${this.channel.readyState})`)
   }
 }

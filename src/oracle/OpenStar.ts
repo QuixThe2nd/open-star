@@ -1,8 +1,8 @@
-import { Signalling } from "../classes/Signalling";
-import type { KeyManager } from "../classes/KeyManager";
-import type { NonEmptyArray } from "../types/generic";
-import type { MethodReturn, PingPongMessage, Oracle, PeerStates, MempoolItem, Message } from "../types/Oracle";
-import { isHexAddress } from "../utils";
+import { Signalling } from "../classes/Signalling"
+import type { KeyManager } from "../classes/KeyManager"
+import type { NonEmptyArray } from "../types/generic"
+import type { MethodReturn, PingPongMessage, Oracle, PeerStates, MempoolItem, Message } from "../types/Oracle"
+import { isHexAddress } from "../utils"
 
 export class OpenStar<OracleState extends Record<string, unknown> = Record<string, unknown>, OracleMethods extends Record<string, (arg: any) => MethodReturn> = Record<string, (arg: any) => MethodReturn>, OracleName extends string = string> {
   public readonly signalling: Signalling<Message<OracleName, OracleMethods, OracleState> | PingPongMessage>
@@ -50,16 +50,16 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
       this.oracle.state.set(await this.oracle.startupState(peerStates as NonEmptyArray<OracleState>))
       this.sendState()
 
-      const startTime = +new Date();
+      const startTime = +new Date()
       await new Promise((resolve) => setTimeout(resolve, (Math.floor(startTime / this.oracle.epochTime) + 1) * this.oracle.epochTime - startTime))
-      this.epoch();
-      setInterval(() => this.epoch(), this.oracle.epochTime);
+      this.epoch()
+      setInterval(() => this.epoch(), this.oracle.epochTime)
     }
   }
 
   public readonly onMessage = (message: Message<OracleName, OracleMethods, OracleState> | PingPongMessage, from: `0x${string}`, callback: (_message: Message<OracleName, OracleMethods, OracleState> | PingPongMessage) => void): void => {
     console.log(`[${message[0].toUpperCase()}] Received message: ${message[1]} from ${from.slice(0, 8)}...`)
-    if (message[0] === 'ping') callback(['pong']);
+    if (message[0] === 'ping') callback(['pong'])
     else if (message[0] === 'pong') console.log('pong')
     else if (message[0] === this.name) {
       if (message[1] === 'state') {
@@ -95,10 +95,10 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
   }
 
   private readonly epoch = (): void => {
-    console.log(`[${this.name}] Epoch:`, new Date().toISOString());
+    console.log(`[${this.name}] Epoch:`, new Date().toISOString())
     this.epochCount++
 
-    let netReputation = 0;
+    let netReputation = 0
     this.peerStates.forEach(peer => {
       const state = this.peerStates[peer]
       if (state === undefined) return
@@ -107,7 +107,7 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
         return
       }
       if (state.lastReceive !== null && this.oracle.reputationChange) this.oracle.reputationChange(peer, state.reputation)
-      netReputation += state.reputation;
+      netReputation += state.reputation
       state.reputation = null
       if (this.peerStates[peer]) this.peerStates[peer].reputation = null
     })
@@ -126,6 +126,6 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
   private readonly call = async <T extends keyof OracleMethods>(method: T, args: Parameters<OracleMethods[T]>[0]): Promise<string | void> => {
     if ('methods' in this.oracle) await this.oracle.methods[method]?.(args)
   }
-  private readonly sendState = () => this.signalling.sendMessage([this.name, 'state', this.oracle.state.value]);
-  public readonly sendMessage = (message: Message<OracleName, OracleMethods, OracleState>) => this.signalling.sendMessage(message);
+  private readonly sendState = () => this.signalling.sendMessage([this.name, 'state', this.oracle.state.value])
+  public readonly sendMessage = (message: Message<OracleName, OracleMethods, OracleState>) => this.signalling.sendMessage(message)
 }

@@ -1,4 +1,4 @@
-import type { Hex } from "../classes/Hex";
+import type { Hex } from "../classes/Hex"
 
 declare global {
   interface BigInt {

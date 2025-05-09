@@ -1,7 +1,7 @@
-import { StateManager } from "../classes/StateManager";
-import type { NonEmptyArray } from "../types/generic";
-import type { Oracle } from "../types/Oracle";
-import { mode, parseEther } from "../utils";
+import { StateManager } from "../classes/StateManager"
+import type { NonEmptyArray } from "../types/generic"
+import type { Oracle } from "../types/Oracle"
+import { mode, parseEther } from "../utils"
 
 type LiquidityPool = Record<string, {
   openStarLiquidity: `0x${string}`,

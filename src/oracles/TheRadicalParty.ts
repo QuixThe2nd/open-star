@@ -30,7 +30,7 @@ function reputationChange(peer: `0x${string}`, reputation: number) {
   const balance = state.value.balances[peer]
   if (reputation > 0) {
     console.log('[COIN] Rewarding', peer.slice(0, 8) + '...')
-    openStar.mint({ to: peer, amount: (balance !== undefined ? BigInt(Math.floor(Number(balance)*blockYield)) : parseEther(1)).toHex().value });
+    openStar.mint({ to: peer, amount: (balance !== undefined ? BigInt(Math.floor(Number(balance)*blockYield)) : parseEther(1)).toHex().value })
   } else if (reputation < 0 && balance !== undefined) {
     console.log('[COIN] Slashing', peer.slice(0, 8) + '...')
     openStar.burn({ to: peer, amount: ((BigInt(balance)*9n)/10n).toHex().value })

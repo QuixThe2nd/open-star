@@ -2,11 +2,11 @@ import { secp256k1 } from '@noble/curves/secp256k1'
 import { HDKey } from '@scure/bip32'
 import { keccak_256 } from '@noble/hashes/sha3'
 import { mnemonicToSeedSync } from '@scure/bip39'
-import { wordlist } from '@scure/bip39/wordlists/english';
-import { Hex } from './Hex';
+import { wordlist } from '@scure/bip39/wordlists/english'
+import { Hex } from './Hex'
 const fs = typeof window === 'undefined' ? await import('fs') : undefined
 
-import { privateKeyToAccount, generateMnemonic } from 'viem/accounts';
+import { privateKeyToAccount, generateMnemonic } from 'viem/accounts'
 
 const keccak256 = <T extends `0x${string}` | Uint8Array>(value: T): T => (typeof value === 'string' ? Hex.fromBytes(keccak_256(new Hex(value).bytes)).value : keccak_256(value)) as T
 
@@ -55,7 +55,7 @@ export function verify(address: `0x${string}`, message: string, signature: Hex):
 }
 
 export class KeyManager {
-  private readonly account: ReturnType<typeof privateKeyToAccount>;
+  private readonly account: ReturnType<typeof privateKeyToAccount>
   readonly id: string
   private readonly privateKey: `0x${string}`
 
@@ -78,12 +78,12 @@ export class KeyManager {
     const privateKeyBytes = HDKey.fromMasterSeed(seed).privateKey
     if (privateKeyBytes === null) throw new Error('Failed to get private key')
     this.privateKey = `0x${Array.from(privateKeyBytes).map(b => b.toString(16).padStart(2, '0')).join('')}`
-    this.account = privateKeyToAccount(this.privateKey);
+    this.account = privateKeyToAccount(this.privateKey)
   }
 
   sign = (message: string): `0x${string}` => sign(keccak256(toPrefixedMessage(message)), this.privateKey)
-  verify = (signature: `0x${string}`, message: string, address: `0x${string}`): boolean => verify(address, message, new Hex(signature));
+  verify = (signature: `0x${string}`, message: string, address: `0x${string}`): boolean => verify(address, message, new Hex(signature))
   get address(){
-    return this.account.address;
+    return this.account.address
   }
 }
