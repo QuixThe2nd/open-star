@@ -15,6 +15,7 @@ export class Signalling<Message> {
   private readonly connectionHandler: () => Promise<void>
   private readonly keyManager: KeyManager
   private readonly oracleName: string
+  private readonly stunServers = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }]
 
   constructor(oracle: { name: string, onMessage: (_data: Message, _from: `0x${string}`, _callback: (_message: Message) => void) => void, onConnect: () => Promise<void>, keyManager: KeyManager }) {
     this.onMessage = oracle.onMessage
@@ -26,7 +27,13 @@ export class Signalling<Message> {
 
     this.ws.onopen = () => {
       console.log(`Announcing to ${this.ws.url}`);
-      this.sendWSMessage({ announce: true, from: this.keyManager.address });
+
+      (async () => {
+        const res = await fetch("https://raw.githubusercontent.com/pradt2/always-online-stun/master/valid_hosts.txt")
+        const hosts = await res.text()
+        hosts.trim().split("\n").map(url => this.stunServers.push({ urls: `stun:${url}` }))
+        this.sendWSMessage({ announce: true, from: this.keyManager.address });
+      })().catch(console.error)
     };
 
     this.ws.onmessage = (event: MessageEvent): void => {
@@ -37,9 +44,9 @@ export class Signalling<Message> {
       if (message.from === this.keyManager.address) return console.error('Message is from self')
       if ('to' in message && message.to !== this.keyManager.address) return console.error('Message is for someone else', message)
 
-      if ('announce' in message) this.peers[message.from] = new Peer<Message>(this.keyManager, message.from, (message: SignallingMessage) => this.sendWSMessage(message), (data: Message, from: `0x${string}`, callback: (message: Message) => void) => this.onMessage(data, from, callback), () => this.onConnect());
+      if ('announce' in message) this.peers[message.from] = new Peer<Message>(this.keyManager, message.from, (message: SignallingMessage) => this.sendWSMessage(message), (data: Message, from: `0x${string}`, callback: (message: Message) => void) => this.onMessage(data, from, callback), () => this.onConnect(), this.stunServers);
       else if ('description' in message) {
-        const peer = this.peers[message.from] ??= new Peer<Message>(this.keyManager, message.from, (message: SignallingMessage) => this.sendWSMessage(message), (data: Message, from: `0x${string}`, callback: (message: Message) => void) => this.onMessage(data, from, callback), () => this.onConnect());
+        const peer = this.peers[message.from] ??= new Peer<Message>(this.keyManager, message.from, (message: SignallingMessage) => this.sendWSMessage(message), (data: Message, from: `0x${string}`, callback: (message: Message) => void) => this.onMessage(data, from, callback), () => this.onConnect(), this.stunServers);
         peer.setRemoteDescription(message.description as RTCSessionDescription).catch(console.error);
       } else if ('iceCandidate' in message) {
         const peerConn = this.peers[message.from]

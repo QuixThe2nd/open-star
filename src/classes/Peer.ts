@@ -15,12 +15,13 @@ export class Peer<Message> {
   private readonly sendWSMessage: (message: SignallingMessage) => void
   private readonly onMessage: (_data: Message, _from: `0x${string}`, _callback: (_message: Message) => void) => void
 
-  constructor(keyManager: KeyManager, peerAddress: `0x${string}`, sendWSMessage: typeof this.sendWSMessage, onMessage: typeof this.onMessage, onConnect: () => void) {
+  constructor(keyManager: KeyManager, peerAddress: `0x${string}`, sendWSMessage: typeof this.sendWSMessage, onMessage: typeof this.onMessage, onConnect: () => void, iceServers: { urls: string }[]) {
     this.sendWSMessage = sendWSMessage
     this.onMessage = onMessage
     this.selfAddress = keyManager.address
     this.peerAddress = peerAddress
-    this.conn = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] });
+
+    this.conn = new RTCPeerConnection({ iceServers });
     this.channel = this.conn.createDataChannel("chat", { negotiated: true, id: 0 });
 
     this.conn.onnegotiationneeded = async () => {
