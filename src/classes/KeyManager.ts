@@ -1,12 +1,10 @@
 import { secp256k1 } from '@noble/curves/secp256k1'
-import { HDKey } from '@scure/bip32'
 import { keccak_256 } from '@noble/hashes/sha3'
-import { mnemonicToSeedSync } from '@scure/bip39'
+import { HDKey } from '@scure/bip32'
+import { mnemonicToSeedSync, generateMnemonic } from '@scure/bip39'
 import { wordlist } from '@scure/bip39/wordlists/english'
 import { Hex } from './Hex'
 const fs = typeof window === 'undefined' ? await import('fs') : undefined
-
-import { privateKeyToAccount, generateMnemonic } from 'viem/accounts'
 
 const keccak256 = <T extends `0x${string}` | Uint8Array>(value: T): T => (typeof value === 'string' ? Hex.fromBytes(keccak_256(new Hex(value).bytes)).value : keccak_256(value)) as T
 
@@ -25,7 +23,6 @@ export function toPrefixedMessage(message_: string): `0x${string}` {
 export function checksumAddress(address_: `0x${string}`): `0x${string}` {
   const hexAddress = address_.substring(2).toLowerCase()
   const hash = keccak256(new TextEncoder().encode(hexAddress))
-
   const address = hexAddress.split('')
   for (let i = 0; i < 40; i += 2) {
     const hashValue = hash[i >> 1]
@@ -33,7 +30,6 @@ export function checksumAddress(address_: `0x${string}`): `0x${string}` {
     if (hashValue >> 4 >= 8 && address[i] !== undefined) address[i] = address[i]?.toUpperCase() ?? ''
     if ((hashValue & 0x0f) >= 8 && address[i + 1] !== undefined) address[i + 1] = address[i + 1]?.toUpperCase() ?? ''
   }
-
   return `0x${address.join('')}`
 }
 
@@ -55,8 +51,8 @@ export function verify(address: `0x${string}`, message: string, signature: Hex):
 }
 
 export class KeyManager {
-  private readonly account: ReturnType<typeof privateKeyToAccount>
   readonly id: string
+  public readonly address: `0x${string}`
   private readonly privateKey: `0x${string}`
 
   constructor(id?: string | number) {
@@ -74,16 +70,13 @@ export class KeyManager {
     else if (typeof fs !== 'undefined') fs.writeFileSync(keyFile, mnemonic)
 
     this.id = String(id)
-    const seed = mnemonicToSeedSync(mnemonic)
-    const privateKeyBytes = HDKey.fromMasterSeed(seed).privateKey
+    const privateKeyBytes = HDKey.fromMasterSeed(mnemonicToSeedSync(mnemonic)).privateKey
     if (privateKeyBytes === null) throw new Error('Failed to get private key')
     this.privateKey = `0x${Array.from(privateKeyBytes).map(b => b.toString(16).padStart(2, '0')).join('')}`
-    this.account = privateKeyToAccount(this.privateKey)
+    const publicKey = Hex.fromBytes(secp256k1.getPublicKey(this.privateKey.slice(2), false)).value
+    this.address = checksumAddress(`0x${keccak256(`0x${publicKey.substring(4)}`).substring(26)}`)
   }
 
   sign = (message: string): `0x${string}` => sign(keccak256(toPrefixedMessage(message)), this.privateKey)
   verify = (signature: `0x${string}`, message: string, address: `0x${string}`): boolean => verify(address, message, new Hex(signature))
-  get address(){
-    return this.account.address
-  }
 }
