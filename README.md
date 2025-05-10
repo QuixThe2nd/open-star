@@ -111,7 +111,7 @@ For a rough idea on the yield that formula dictates:
 |80%|3.75%|3%|
 |50%|7.5%|3.75%|
 |20%|22.5%|4.5%|
-|10%|47.5%|4.75&|
+|10%|47.5%|4.75%|
 
 ### Reputation Change
 Now lets actually reward and punish peers:
