@@ -22,7 +22,10 @@ async function buildFiles() {
         }
       }
     ],
-    entrypoints: [ './src/index.ts', ...oracles ]
+    entrypoints: [ './src/index.ts', ...oracles ],
+    target: 'browser',
+    sourcemap: 'external',
+    root: 'src/'
   })
 }
 

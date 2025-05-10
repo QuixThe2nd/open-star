@@ -3,6 +3,7 @@
   "main": "src/index.ts",
   "module": "src/index.ts",
   "type": "module",
+  "sideEffects": false,
   "scripts": {
     "dev": "tsx src/client.ts",
     "test": "tsx src/tests/tests.ts",
