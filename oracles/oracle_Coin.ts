@@ -1,4 +1,4 @@
-import { StateManager, type ORC20Oracle, type Oracle, type ORC20State, mode, parseEther } from "../src"
+import { StateManager, type ORC20Oracle, type Oracle, type ORC20State, mode, parseEther } from ".."
 
 const state = new StateManager<ORC20State>({ balances: {} })
 

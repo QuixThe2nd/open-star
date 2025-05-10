@@ -1,4 +1,4 @@
-import { StateManager, type ORC20Oracle, type NonEmptyArray, type Oracle, type ORC20State, mode, parseEther } from "../src"
+import { StateManager, type ORC20Oracle, type NonEmptyArray, type Oracle, type ORC20State, mode, parseEther } from ".."
 
 const state = new StateManager<ORC20State & { laws: string[] }>({ laws: [], balances: {} })
 const methods = {

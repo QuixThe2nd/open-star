@@ -1,4 +1,4 @@
-import { mode, parseEther, StateManager, type Oracle, type NonEmptyArray } from "../src"
+import { mode, parseEther, StateManager, type Oracle, type NonEmptyArray } from ".."
 
 type LiquidityPool = Record<string, {
   openStarLiquidity: `0x${string}`,
