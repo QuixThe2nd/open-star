@@ -1,9 +1,4 @@
-import { StateManager } from "../classes/StateManager"
-import type { ORC20Oracle } from "../oracle/ORC20"
-import type { NonEmptyArray } from "../types/generic"
-import type { Oracle } from "../types/Oracle"
-import type { ORC20State } from "../types/ORC20"
-import { mode, parseEther } from "../utils"
+import { StateManager, type ORC20Oracle, type NonEmptyArray, type Oracle, type ORC20State, mode, parseEther } from ".."
 
 const state = new StateManager<ORC20State & { laws: string[] }>({ laws: [], balances: {} })
 const methods = {
@@ -26,11 +21,11 @@ function calculateAPR(): number {
 }
 
 function reputationChange(peer: `0x${string}`, reputation: number) {
-  const blockYield = calculateAPR() / (365 * 24 * 60 * 60 * 1000) / 5_000
+  const epochYield = calculateAPR() / (365 * 24 * 60 * 60 * 1000) / 5_000
   const balance = state.value.balances[peer]
   if (reputation > 0) {
     console.log('[COIN] Rewarding', peer.slice(0, 8) + '...')
-    openStar.mint({ to: peer, amount: (balance !== undefined ? BigInt(Math.floor(Number(balance)*blockYield)) : parseEther(1)).toHex().value })
+    openStar.mint({ to: peer, amount: (balance !== undefined ? BigInt(Math.floor(Number(balance)*epochYield)) : parseEther(1)).toHex().value })
   } else if (reputation < 0 && balance !== undefined) {
     console.log('[COIN] Slashing', peer.slice(0, 8) + '...')
     openStar.burn({ to: peer, amount: ((BigInt(balance)*9n)/10n).toHex().value })

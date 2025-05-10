@@ -1,9 +1,4 @@
-import { StateManager } from "../classes/StateManager"
-import type { ORC20Oracle } from "../oracle/ORC20"
-import type { NonEmptyArray } from "../types/generic"
-import type { Oracle } from "../types/Oracle"
-import type { ORC20State } from "../types/ORC20"
-import { mode, parseEther } from "../utils"
+import { StateManager, type ORC20Oracle, type NonEmptyArray, type Oracle, type ORC20State, mode, parseEther } from ".."
 
 class NameServiceOracle {
   public state = new StateManager<ORC20State & { hostnames: Record<`${string}.star`, `0x${string}`> }>({ balances: {}, hostnames: {} })
@@ -38,10 +33,10 @@ class NameServiceOracle {
   }
 
   public readonly reputationChange = (peer: `0x${string}`, reputation: number): void => {
-    const blockYield = this.ORC20.calculateAPR() / (365 * 24 * 60 * 60 * 1000) / 5_000
+    const epochYield = this.ORC20.calculateAPR() / (365 * 24 * 60 * 60 * 1000) / 5_000
     if (reputation > 0) {
       console.log('[NAMESERVICE] Rewarding', peer.slice(0, 8) + '...')
-      this.openStar.mint({ to: peer, amount: (this.state.value.balances[peer] !== undefined ? BigInt(Math.floor(Number(this.state.value.balances[peer])*blockYield)) : parseEther(1)).toHex().value })
+      this.openStar.mint({ to: peer, amount: (this.state.value.balances[peer] !== undefined ? BigInt(Math.floor(Number(this.state.value.balances[peer])*epochYield)) : parseEther(1)).toHex().value })
     } else if (reputation < 0 && this.state.value.balances[peer] !== undefined) {
       console.log('[NAMESERVICE] Slashing', peer.slice(0, 8) + '...')
       this.openStar.burn({ to: peer, amount: ((BigInt(this.state.value.balances[peer] ?? `0x0`)*9n)/10n).toHex().value })
