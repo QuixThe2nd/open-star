@@ -1,8 +1,8 @@
-import type { StateManager } from "../classes/StateManager";
-import type { OpenStar } from "../oracle/OpenStar";
-import type { ORC20Oracle } from "../oracle/ORC20";
-import type { NonEmptyArray } from "./generic";
-import type { ORC20Flags, ORC20State } from "./ORC20";
+import type { StateManager } from "../classes/StateManager"
+import type { OpenStar } from "../oracle/OpenStar"
+import type { ORC20Oracle } from "../oracle/ORC20"
+import type { NonEmptyArray } from "./generic"
+import type { ORC20Flags, ORC20State } from "./ORC20"
 
 export type MethodReturn = string | void | Promise<string | void>
 export type Methods<T extends Record<string, (arg: any) => MethodReturn>> = { [K in keyof T]: T[K] extends (arg: infer A) => MethodReturn ? (arg: A) => MethodReturn : never }

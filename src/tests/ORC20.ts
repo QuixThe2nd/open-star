@@ -1,11 +1,11 @@
-import { strict as assert } from 'assert';
-import { KeyManager } from '../classes/KeyManager';
-import { StateManager } from '../classes/StateManager';
-import { ORC20Oracle } from '../oracle/ORC20';
-import { mode, parseEther } from '../utils';
-import type { NonEmptyArray } from '../types/generic';
-import type { ORC20State } from '../types/ORC20';
-import { test } from './test';
+import { strict as assert } from 'assert'
+import { KeyManager } from '../classes/KeyManager'
+import { StateManager } from '../classes/StateManager'
+import { ORC20Oracle } from '../oracle/ORC20'
+import { mode, parseEther } from '../utils'
+import type { NonEmptyArray } from '../types/generic'
+import type { ORC20State } from '../types/ORC20'
+import { test } from './test'
 
 export async function ORC20Tests() {
   const openStar = new ORC20Oracle({
@@ -14,66 +14,66 @@ export async function ORC20Tests() {
     ORC20: { ticker: 'TEST', calculateAPR: () => { return 0 } },
     state: new StateManager<ORC20State>({ balances: {} }),
     startupState: (peerStates: NonEmptyArray<ORC20State>) => mode(peerStates)
-  }, new KeyManager('tests'));
+  }, new KeyManager('tests'))
 
-  const alice: `0x${string}` = '0x1111111111111111111111111111111111111111';
-  const bob: `0x${string}` = '0x2222222222222222222222222222222222222222';
-  const charlie: `0x${string}` = '0x3333333333333333333333333333333333333333';
+  const alice: `0x${string}` = '0x1111111111111111111111111111111111111111'
+  const bob: `0x${string}` = '0x2222222222222222222222222222222222222222'
+  const charlie: `0x${string}` = '0x3333333333333333333333333333333333333333'
   
   
-  await test('Initial circulating supply should be zero', () => assert.equal(openStar.circulatingSupply(), 0n));
+  await test('Initial circulating supply should be zero', () => assert.equal(openStar.circulatingSupply(), 0n))
   
   await test('Minting tokens to Alice', () => {
-    openStar.mint({ to: alice, amount: parseEther(100).toHex() });
-    assert.equal(BigInt(openStar.oracle.state.value.balances[alice] ?? '0x0'), parseEther(100));
-  });
+    openStar.mint({ to: alice, amount: parseEther(100).toHex().value })
+    assert.equal(BigInt(openStar.oracle.state.value.balances[alice] ?? '0x0'), parseEther(100))
+  })
   
-  await test('Circulating supply should increase after minting to Alice', () => assert.equal(openStar.circulatingSupply(), parseEther(100)));
+  await test('Circulating supply should increase after minting to Alice', () => assert.equal(openStar.circulatingSupply(), parseEther(100)))
   
   await test('Minting tokens to Bob', () => {
-    openStar.mint({ to: bob, amount: parseEther(50).toHex() });
-    assert.equal(BigInt(openStar.oracle.state.value.balances[bob] ?? '0x0'), parseEther(50));
-  });
+    openStar.mint({ to: bob, amount: parseEther(50).toHex().value })
+    assert.equal(BigInt(openStar.oracle.state.value.balances[bob] ?? '0x0'), parseEther(50))
+  })
   
-  await test('Circulating supply should increase after minting to Bob', () => assert.equal(openStar.circulatingSupply(), parseEther(150)));
+  await test('Circulating supply should increase after minting to Bob', () => assert.equal(openStar.circulatingSupply(), parseEther(150)))
   
-  await test('Transferring tokens from Alice to Charlie', async () => {
-    const from = alice;
-    const to = charlie;
-    const amount = parseEther(25).toHex();
-    assert.equal(openStar.transfer({ from, to, amount, signature: await openStar.keyManager.sign(JSON.stringify({ from, to, amount })) }), undefined);
-    assert.equal(BigInt(openStar.oracle.state.value.balances[from] ?? `0x0`), parseEther(75));
-    assert.equal(BigInt(openStar.oracle.state.value.balances[to] ?? `0x0`), parseEther(25));
-  });
+  await test('Transferring tokens from Alice to Charlie', () => {
+    const from = alice
+    const to = charlie
+    const amount = parseEther(25).toHex().value
+    assert.equal(openStar.transfer({ from, to, amount, signature: openStar.keyManager.sign(JSON.stringify({ from, to, amount })) }), undefined)
+    assert.equal(BigInt(openStar.oracle.state.value.balances[from] ?? `0x0`), parseEther(75))
+    assert.equal(BigInt(openStar.oracle.state.value.balances[to] ?? `0x0`), parseEther(25))
+  })
   
-  await test('Transferring more tokens than balance should fail', async () => {
-    const from = alice;
-    const to = charlie;
-    const amount = parseEther(100).toHex();
-    assert.equal(openStar.transfer({ from, to, amount, signature: await openStar.keyManager.sign(JSON.stringify({ from, to, amount })) }), 'Balance too low');
-    assert.equal(BigInt(openStar.oracle.state.value.balances[from] ?? `0x0`), parseEther(75));
-    assert.equal(BigInt(openStar.oracle.state.value.balances[to] ?? `0x0`), parseEther(25));
-  });
+  await test('Transferring more tokens than balance should fail', () => {
+    const from = alice
+    const to = charlie
+    const amount = parseEther(100).toHex().value
+    assert.equal(openStar.transfer({ from, to, amount, signature: openStar.keyManager.sign(JSON.stringify({ from, to, amount })) }), 'Balance too low')
+    assert.equal(BigInt(openStar.oracle.state.value.balances[from] ?? `0x0`), parseEther(75))
+    assert.equal(BigInt(openStar.oracle.state.value.balances[to] ?? `0x0`), parseEther(25))
+  })
   
   await test('Burning some tokens from Bob', () => {
-    assert.equal(openStar.burn({ to: bob, amount: parseEther(20).toHex() }), undefined);
-    assert.equal(BigInt(openStar.oracle.state.value.balances[bob] ?? `0x0`), parseEther(30));
-  });
+    assert.equal(openStar.burn({ to: bob, amount: parseEther(20).toHex().value }), undefined)
+    assert.equal(BigInt(openStar.oracle.state.value.balances[bob] ?? `0x0`), parseEther(30))
+  })
   
   await test('Burning all remaining tokens from Bob', () => {
-    const result = openStar.burn({ to: bob, amount: parseEther(40).toHex() });
+    const result = openStar.burn({ to: bob, amount: parseEther(40).toHex().value })
     assert.equal(result, undefined)
-    assert.equal(BigInt(openStar.oracle.state.value.balances[bob] ?? `0x0`), 0n);
-  });
+    assert.equal(BigInt(openStar.oracle.state.value.balances[bob] ?? `0x0`), 0n)
+  })
   
-  await test('Circulating supply should decrease after burning', () => assert.equal(openStar.circulatingSupply(), parseEther(100)));
+  await test('Circulating supply should decrease after burning', () => assert.equal(openStar.circulatingSupply(), parseEther(100)))
   
   await test('Staking rate calculation', () => {
     Object.defineProperty(openStar, 'peerStates', {
       get: function() {
-        return [alice, bob];
+        return [alice, bob]
       }
-    });
-    assert.equal(openStar.stakingRate(), 0.75);
-  });
+    })
+    assert.equal(openStar.stakingRate(), 0.75)
+  })
 }

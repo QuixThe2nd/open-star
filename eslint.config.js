@@ -52,7 +52,8 @@ export default tseslint.config(
       'promise/avoid-new': 'off',
       '@typescript-eslint/return-await': 'off',
       complexity: 'off',
-      '@typescript-eslint/init-declarations': 'off'
+      '@typescript-eslint/init-declarations': 'off',
+      semi: ["error", "never"]
     }
   }
 )

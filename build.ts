@@ -12,9 +12,8 @@ async function buildFiles() {
       {
         name: 'alias',
         setup(build) {
-          build.onResolve({ filter: /^fs|@roamhq\/wrtc|(viem(\/.*)?)$/ }, (pkg) => {
+          build.onResolve({ filter: /^fs|@roamhq\/wrtc$/ }, (pkg) => {
             if (pkg.path === 'fs' || pkg.path === '@roamhq/wrtc') return { path: path.resolve('./src/shims/empty.ts') }
-            else if (pkg.path.startsWith('viem')) return { path: path.resolve(`./node_modules/${pkg.path}/index.ts`) }
             else {
               console.error('Unknown Package', pkg)
               return pkg
@@ -23,7 +22,10 @@ async function buildFiles() {
         }
       }
     ],
-    entrypoints: [ './src/index.ts', ...oracles ]
+    entrypoints: [ './src/index.ts', ...oracles ],
+    target: 'browser',
+    sourcemap: 'external',
+    root: 'src/'
   })
 }
 

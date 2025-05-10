@@ -1,11 +1,11 @@
-import { ORC20Tests } from "./ORC20";
-import { DemoTests } from "./Demo";
-import { testResults } from "./test";
+import { ORC20Tests } from "./ORC20"
+import { DemoTests } from "./Demo"
+import { testResults } from "./test"
 
-await ORC20Tests();
-await DemoTests();
+await ORC20Tests()
+await DemoTests()
 
-console.log(`\n--- Test Results ---`);
-console.log(`${testResults.passed} passed, ${testResults.failed} failed`);
+console.log(`\n--- Test Results ---`)
+console.log(`${testResults.passed} passed, ${testResults.failed} failed`)
 
-process.exit(testResults.failed > 0 ? 1 : 0);
+process.exit(testResults.failed > 0 ? 1 : 0)
