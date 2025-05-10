@@ -1,5 +1,5 @@
 import { Signalling } from "../classes/Signalling"
-import type { KeyManager } from "../classes/KeyManager"
+import { KeyManager } from "../classes/KeyManager"
 import type { NonEmptyArray } from "../types/generic"
 import type { MethodReturn, PingPongMessage, Oracle, PeerStates, MempoolItem, Message } from "../types/Oracle"
 import { isHexAddress } from "../utils"
@@ -16,9 +16,9 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
   private mempool: Record<string, MempoolItem<OracleMethods>> = {}
   connectHandler?: () => void
 
-  constructor(oracle: Oracle<OracleState, OracleMethods, OracleName>, keyManager: KeyManager) {
+  constructor(oracle: Oracle<OracleState, OracleMethods, OracleName>, keyManager?: KeyManager) {
     this.name = oracle.name
-    this.keyManager = keyManager
+    this.keyManager = keyManager ?? new KeyManager()
     this.oracle = oracle
     this.signalling = new Signalling<Message<OracleName, OracleMethods, OracleState> | PingPongMessage>(this)
     if ('setOpenStar' in oracle) this.initializeExtended()
