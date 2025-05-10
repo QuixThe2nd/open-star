@@ -16,7 +16,7 @@ npx tsx src/client.ts
 
 To build, use:
 ```sh
-bun build.ts
+bun run build
 ```
 
 If the script stalls at `Announcing`, run a second node. This happens when no peers are online.
@@ -28,7 +28,7 @@ Open Star can be imported using `npm install QuixThe2nd/open-star` and used like
 To use an oracle, import Open Star and the oracle:
 ```ts
 import { start } from "open-star"
-import oracle from "open-star/oracles/Demo"
+import oracle from "./oracles/oracle_Demo"
 ```
 
 Then run it:
@@ -47,7 +47,7 @@ To create an Oracle, you need to first import `QuixThe2nd/open-star`.
 Define your state. This variable is shared between all nodes. Open Star's primary job is to ensure that you and all other nodes keep in sync with this variable. It can be any data type including objects, as long as it can be serialized to JSON.
 ```ts
 import { StateManager } from "open-star"
-const state = new StateManager(0)
+const state = new StateManager({ number: 0 })
 ```
 
 Here, state is initialized with a value of `0`. This default value is passed into Open Star's state manager. The state manager is used to ensure the state is only ever passed by reference. You can optionally call `state.subscribe()` to add an event listener onChange. This can optionally be used to reactify the state.
@@ -56,13 +56,13 @@ Here, state is initialized with a value of `0`. This default value is passed int
 Now you need to define the methods available to mutate the shared state (add and subtract). This is the only part of your code that should update the `state`.
 ```ts
 const methods = {
-  add: (args: { value: number, time: number }): string | void => {
+  add: (args: { value: number }): string | void => {
     if (args.value <= 0) return 'Value must be positive'
-    state += args.value
+    state.set({ number: Number(state.value.number) + Number(args.value) })
   },
-  subtract: (args: { value: number, time: number }): string | void => {
+  subtract: (args: { value: number }): string | void => {
     if (args.value <= 0) return 'Value must be positive'
-    state -= args.value
+    state.set({ number: state.value.number - args.value })
   }
 }
 ```
@@ -71,26 +71,18 @@ Never call your methods directly when implementing your oracle. You should call 
 You also need to define a description for your methods. This should be an object containing all methods, and example arguments.
 ```ts
 const methodDescriptions = {
-  add: { value: 0, time: 0 },
-  subtract: { value: 0, time: 0 },
+  add: { value: 0 },
+  subtract: { value: 0 },
 }
 ```
 
 ### Oracle Object
 Now you need to declare your Oracle object. This is what will be passed to Open Star, specifying how your oracle should be executed.
 ```ts
-import type { Oracle } from "open-star"
-const oracle: Oracle<'DEMO', typeof state.value, typeof methods> = { name: 'DEMO', epochTime: 60_000, state, methods, methodDescriptions }
+import { mode, type Oracle } from "open-star"
+const oracle: Oracle<typeof state.value, typeof methods> = { name: 'DEMO', epochTime: 5_000, state, methods, methodDescriptions, startupState: (peerStates) => mode(peerStates) }
 export default oracle
 ```
-
-### Startup State
-Write a function that returns the current state. This is called when nodes first connect to the network and should be placed inside the oracle object.
-```ts
-startupState: (peerStates) => peerStates.toSorted((a,b) => peerStates.filter(v => v===a).length - peerStates.filter(v => v===b).length).pop(),
-```
-
-Open Star will call your reputation handler with a list of peers and their reputation. You can configure how to treat good/bad actors. Reputation is calculated as number of times the peer has sent you a valid or invalid state. This function is the only acceptable place to change state or to call methods.
 
 Your Open Star client will handle the rest. You can check `src/client.ts` to see how your oracle is passed to Open Star. The full example is available at `./src/oracles/Demo.ts`.
 
@@ -104,55 +96,34 @@ import { StateManager, ORC20State } from "open-star"
 const state = new StateManager<ORC20State>({ balances: {} })
 ```
 
-### Coin Methods
-Now you need to define the methods available for your coin. ORC20s need a `transfer` method.
-```ts
-import { ORC20Methods } from "open-star"
-
-interface CoinMethods extends ORC20Methods {
-  transfer: (args: { from: `0x${string}`, to: `0x${string}`, amount: `0x${string}`, signature: `0x${string}` }) => string | void
-}
-
-const methodDescriptions = {
-  transfer: { from: `0x`, to: `0x`, amount: `0x`, time: 0, signature: `0x` },
-}
-```
-
-Now write the implementation of your method:
-```ts
-const methods: CoinMethods = {
-  transfer(args: { from: `0x${string}`, to: `0x${string}`, amount: `0x${string}`, signature: `0x${string}` }): string | void {
-    const balance = state.value.balances[args.from]
-    if (balance === undefined) return 'No balance'
-    if (balance < args.amount) return 'Balance too low'
-    state.value.balances[args.from] = (BigInt(balance) - BigInt(args.amount)).toHex()
-    state.value.balances[args.to] = (BigInt(state.value.balances[args.to] ?? `0x0`) + BigInt(args.amount)).toHex()
-  }
-}
-```
-
 ### Yield
 When rewarding good peers, we need a function to decide their yield. ORC20s are able to access Open Star's `stakingRate` function, which returns the percentage of coins that are being staked. We will use this to determine the staking yield, so the more coins that are staked, the lower the yield goes:
 ```ts
-function calculateEpochYield(epochTime: number): number {
+function calculateAPR(): number {
   const stakingRate = openStar.stakingRate()
-  const stakingAPR = 0.05 * (1 - stakingRate * 0.5) / stakingRate
-  const epochsPerYear = (365 * 24 * 60 * 60 * 1000) / epochTime
-  return stakingAPR / epochsPerYear
+  return 0.05 * (1 - stakingRate * 0.5) / stakingRate
 }
 ```
+For a rough idea on the yield that formula dictates:
+|% Staked|APR %|
+|---|---|
+|100%|2.5%|
+|80%|3.75%|
+|50%|7.5%|
+|20%|22.5%|
+|10%|47.5%|
 
 ### Reputation Change
 Now lets actually reward and punish peers:
 ```ts
 const reputationChange = (peer: `0x${string}`, reputation: number): void => {
-  const blockYield = calculateEpochYield(5_000)
+  const epochYield = calculateAPR() / (365 * 24 * 60 * 60 * 1000) / 5_000
   if (reputation > 0) {
     console.log('[COIN] Rewarding', peer.slice(0, 8) + '...')
-    openStar.mint({ to: peer, amount: (state.value.balances[peer] !== undefined ? BigInt(Math.floor(Number(state.value.balances[peer])*blockYield)) : parseEther(100)).toHex() });
+    openStar.mint({ to: peer, amount: (state.value.balances[peer] !== undefined ? BigInt(Math.floor(Number(state.value.balances[peer])*epochYield)) : parseEther(100)).toHex().value })
   } else if (reputation < 0 && state.value.balances[peer] !== undefined) {
     console.log('[COIN] Slashing', peer.slice(0, 8) + '...')
-    openStar.burn({ to: peer, amount: ((BigInt(state.value.balances[peer])*9n)/10n).toHex() })
+    openStar.burn({ to: peer, amount: ((BigInt(state.value.balances[peer] ?? `0x0`)*9n)/10n).toHex().value })
   }
 }
 ```
@@ -161,8 +132,8 @@ Open Star ORC20s have access to the native `mint` and `burn` functions. You can 
 ### Open Star Setter
 In `calculateEpochYield`, we called Open Star's `stakingRate` function. To access Open Star, we need to define a setter that Open Star calls on run.
 ```ts
-let openStar: ORC20Oracle<"COIN", ORC20State, CoinMethods>
-const setOpenStar = (newOpenStar: ORC20Oracle<"COIN", ORC20State, CoinMethods>) => {
+let openStar: ORC20Oracle<ORC20State, Record<string, never>>
+const setOpenStar = (newOpenStar: ORC20Oracle<ORC20State, Record<string, never>>) => {
   openStar = newOpenStar
 }
 ```
@@ -170,24 +141,24 @@ const setOpenStar = (newOpenStar: ORC20Oracle<"COIN", ORC20State, CoinMethods>) 
 ### Export Oracle
 Finally export your oracle
 ```ts
-const oracle: Oracle<'COIN', typeof state.value, typeof methods> = {
+const oracle: Oracle<typeof state.value, Record<string, never>> = {
   name: 'COIN',
   epochTime: 5_000,
-  ORC20: { ticker: 'STAR' },
+  ORC20: { ticker: 'STAR', calculateAPR },
   transactionToID: (method, args) => `${method}-${JSON.stringify(args)}`,
-  startupState: (peerStates) => peerStates.toSorted((a,b) => peerStates.filter(v => v===a).length - peerStates.filter(v => v===b).length).pop(),
+  startupState: (peerStates) => mode(peerStates),
   state,
-  methods,
-  methodDescriptions,
   reputationChange,
   setOpenStar
 }
 export default oracle
 ```
 
+ORC20s have a `openStar.transfer()` function that is called to handle balance transfer.
+
 ## For Decentralization Nerds
 ### Forks
-Oracles can fork, just like blockchains and similar consensus mechanisms. This can happen for many reasons, some malicious (e,g, 51% attacks), some accidental (e.g. peers go out of sync), and some from community division.
+Oracles can fork, just like blockchains and similar consensus mechanisms. This can happen for many reasons, some malicious (e.g. 51% attacks), some accidental (e.g. peers go out of sync), and some from community division.
 
 When building your oracle, remember to implement logic to handle malicious and accidental forks. For community forks, it is advised that you change the oracle name to prevent conflict between the oracles (e.g. slashing if any).
 ### x Improvement Proposals (xIP) & DAOs
