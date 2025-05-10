@@ -38,8 +38,7 @@ const methods = {
     if (!(address in updatedShares)) updatedShares[address] = liquidityShareRatio
 
     state.value.pools[token]?.share.forEach((existingAddress, existingShare) => {
-      if (existingAddress === address) updatedShares[existingAddress] = existingShare * (1 - liquidityShareRatio) + liquidityShareRatio
-      else updatedShares[existingAddress] = existingShare * (1 - liquidityShareRatio)
+      updatedShares[existingAddress] = existingAddress === address ? existingShare * (1 - liquidityShareRatio) + liquidityShareRatio : existingShare * (1 - liquidityShareRatio)
     })
 
     stateValue.pools[token].openStarLiquidity = totalOpenStarLiquidity.toHex().value
