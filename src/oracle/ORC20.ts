@@ -33,14 +33,14 @@ export class ORC20Oracle<OracleState extends ORC20State = ORC20State, OracleMeth
     const balance = this.oracle.state.value.balances[args.to]
     if (balance === undefined) return 'Address does not exist'
     const state = this.oracle.state.value as OracleState
-    if (balance < args.amount) state.balances[args.to] = `0x0`
+    if (Number(balance) < Number(args.amount)) state.balances[args.to] = `0x0`
     else state.balances[args.to] = (BigInt(balance) - BigInt(args.amount)).toHex().value
     this.oracle.state.set(state)
   }
   transfer(args: { from: `0x${string}`, to: `0x${string}`, amount: `0x${string}`, signature: `0x${string}` }): string | void {
     const balance = this.oracle.state.value.balances[args.from]
     if (balance === undefined) return 'No balance'
-    if (balance < args.amount) return 'Balance too low'
+    if (Number(balance) < Number(args.amount)) return 'Balance too low'
     const state = this.oracle.state.value as OracleState
     state.balances[args.from] = (BigInt(balance) - BigInt(args.amount)).toHex().value
     state.balances[args.to] = (BigInt(state.balances[args.to] ?? `0x0`) + BigInt(args.amount)).toHex().value
