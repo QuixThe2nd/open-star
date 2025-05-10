@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: Create Release
 
 on:
   push:
@@ -39,6 +39,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
     
     - name: Download build artifact
       uses: actions/download-artifact@v4
@@ -46,15 +48,18 @@ jobs:
         name: build-output
         path: dist/
     
-    - name: Get current date
-      id: date
-      run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+    - name: Get version number
+      id: version
+      run: |
+        PREV_VERSION=$(git tag -l 'v*' | sort -V | tail -n 1 | sed 's/v//' || echo "0")
+        NEXT_VERSION=$((PREV_VERSION + 1))
+        echo "version=$NEXT_VERSION" >> $GITHUB_OUTPUT
       
     - name: Create Release
       id: create_release
       uses: softprops/action-gh-release@v1
       with:
-        name: Release ${{ steps.date.outputs.date }}
-        tag_name: release-${{ steps.date.outputs.date }}
+        name: Release v${{ steps.version.outputs.version }}
+        tag_name: v${{ steps.version.outputs.version }}
         generate_release_notes: true
         files: dist/**/*
