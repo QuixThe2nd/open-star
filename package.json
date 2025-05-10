@@ -1,7 +1,7 @@
 {
   "name": "open-star",
-  "main": "src/index.ts",
-  "module": "src/index.ts",
+  "main": "src/openstar.ts",
+  "module": "src/openstar.ts",
   "type": "module",
   "sideEffects": false,
   "scripts": {
