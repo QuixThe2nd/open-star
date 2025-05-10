@@ -1,7 +1,9 @@
 name: Checks
+
 on:
   pull_request:
     branches: [ main ]
+
 jobs:
   test:
     name: Run Tests
@@ -16,19 +18,7 @@ jobs:
       run: bun install
     - name: Run tests
       run: bun run test
-    - name: Report status
-      if: always()
-      uses: actions/github-script@v6
-      with:
-        script: |
-          const { context } = require('@actions/github');
-          github.rest.checks.create({
-            ...context.repo,
-            name: 'tests',
-            head_sha: context.sha,
-            status: 'completed',
-            conclusion: '${{ job.status }}'.toLowerCase(),
-          });
+
   type-check:
     name: Type Check
     runs-on: ubuntu-latest
@@ -42,6 +32,7 @@ jobs:
       run: bun install
     - name: Validate types
       run: bun run type-check
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
