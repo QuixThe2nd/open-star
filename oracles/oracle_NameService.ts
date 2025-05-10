@@ -33,10 +33,10 @@ class NameServiceOracle {
   }
 
   public readonly reputationChange = (peer: `0x${string}`, reputation: number): void => {
-    const blockYield = this.ORC20.calculateAPR() / (365 * 24 * 60 * 60 * 1000) / 5_000
+    const epochYield = this.ORC20.calculateAPR() / (365 * 24 * 60 * 60 * 1000) / 5_000
     if (reputation > 0) {
       console.log('[NAMESERVICE] Rewarding', peer.slice(0, 8) + '...')
-      this.openStar.mint({ to: peer, amount: (this.state.value.balances[peer] !== undefined ? BigInt(Math.floor(Number(this.state.value.balances[peer])*blockYield)) : parseEther(1)).toHex().value })
+      this.openStar.mint({ to: peer, amount: (this.state.value.balances[peer] !== undefined ? BigInt(Math.floor(Number(this.state.value.balances[peer])*epochYield)) : parseEther(1)).toHex().value })
     } else if (reputation < 0 && this.state.value.balances[peer] !== undefined) {
       console.log('[NAMESERVICE] Slashing', peer.slice(0, 8) + '...')
       this.openStar.burn({ to: peer, amount: ((BigInt(this.state.value.balances[peer] ?? `0x0`)*9n)/10n).toHex().value })
