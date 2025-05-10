@@ -18,6 +18,20 @@ jobs:
       run: bun install
     - name: Run tests
       run: bun run test
+    - name: Report status
+      if: always()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const context = github.context;
+          github.rest.checks.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            name: 'tests',
+            head_sha: context.sha,
+            status: 'completed',
+            conclusion: '${{ job.status }}' === 'success' ? 'success' : 'failure'
+          })
 
   type-check:
     name: Type Check
@@ -32,6 +46,20 @@ jobs:
       run: bun install
     - name: Validate types
       run: bun run type-check
+    - name: Report status
+      if: always()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const context = github.context;
+          github.rest.checks.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            name: 'type-check',
+            head_sha: context.sha,
+            status: 'completed',
+            conclusion: '${{ job.status }}' === 'success' ? 'success' : 'failure'
+          })
 
   lint:
     name: Lint
@@ -46,3 +74,17 @@ jobs:
       run: bun install
     - name: Lint
       run: bun run lint
+    - name: Report status
+      if: always()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const context = github.context;
+          github.rest.checks.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            name: 'lint',
+            head_sha: context.sha,
+            status: 'completed',
+            conclusion: '${{ job.status }}' === 'success' ? 'success' : 'failure'
+          })
