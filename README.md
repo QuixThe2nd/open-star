@@ -105,13 +105,13 @@ function calculateAPR(): number {
 }
 ```
 For a rough idea on the yield that formula dictates:
-|% Staked|APR %|
-|---|---|
-|100%|2.5%|
-|80%|3.75%|
-|50%|7.5%|
-|20%|22.5%|
-|10%|47.5%|
+|% Staked|APR %|Inflation %|
+|---|---|---|
+|100%|2.5%|2.5%|
+|80%|3.75%|3%|
+|50%|7.5%|3.75%|
+|20%|22.5%|4.5%|
+|10%|47.5%|4.75&|
 
 ### Reputation Change
 Now lets actually reward and punish peers:
