@@ -19,7 +19,7 @@ await Bun.build({
       })
     }
   }],
-  entrypoints: [ './src/index.ts', ...oracles ],
+  entrypoints: [ './src/openstar.ts', ...oracles ],
   target: 'browser',
   sourcemap: 'external',
   root: 'src/'
