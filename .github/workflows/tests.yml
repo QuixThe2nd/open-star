@@ -23,7 +23,6 @@ jobs:
       uses: actions/github-script@v6
       with:
         script: |
-          const context = github.context;
           github.rest.checks.create({
             owner: context.repo.owner,
             repo: context.repo.repo,
@@ -51,7 +50,6 @@ jobs:
       uses: actions/github-script@v6
       with:
         script: |
-          const context = github.context;
           github.rest.checks.create({
             owner: context.repo.owner,
             repo: context.repo.repo,
@@ -79,7 +77,6 @@ jobs:
       uses: actions/github-script@v6
       with:
         script: |
-          const context = github.context;
           github.rest.checks.create({
             owner: context.repo.owner,
             repo: context.repo.repo,
