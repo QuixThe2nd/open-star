@@ -1,9 +1,4 @@
-import { StateManager } from "../classes/StateManager"
-import type { ORC20Oracle } from "../oracle/ORC20"
-import type { NonEmptyArray } from "../types/generic"
-import type { Oracle } from "../types/Oracle"
-import type { ORC20State } from "../types/ORC20"
-import { mode, parseEther } from "../utils"
+import { StateManager, type ORC20Oracle, type NonEmptyArray, type Oracle, type ORC20State, mode, parseEther } from "../src"
 
 class NameServiceOracle {
   public state = new StateManager<ORC20State & { hostnames: Record<`${string}.star`, `0x${string}`> }>({ balances: {}, hostnames: {} })

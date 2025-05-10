@@ -1,6 +1,4 @@
-import { StateManager } from "../classes/StateManager"
-import type { Oracle } from "../types/Oracle"
-import { mode } from "../utils"
+import { StateManager, type Oracle, mode } from "../src"
 
 const state = new StateManager({ number: 0 })
 const methods = {

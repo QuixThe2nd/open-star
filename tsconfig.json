@@ -51,5 +51,5 @@
 		"noStrictGenericChecks": false
 	},
 	"exclude": ["node_modules/"],
-	"include": ["src/**/*", "eslint.config.js", "build.ts"]
+	"include": ["./**/*", "eslint.config.js", "build.ts"]
 }
