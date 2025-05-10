@@ -3,8 +3,8 @@ import { KeyManager } from '../classes/KeyManager'
 import { StateManager } from '../classes/StateManager'
 import { mode } from '../utils'
 import type { NonEmptyArray } from '../types/generic'
-import { test } from './test'
 import { OpenStar } from '../oracle/OpenStar'
+import { test } from './tests'
 
 export async function DemoTests() {
   const state = new StateManager({ number: 0 })
@@ -30,60 +30,60 @@ export async function DemoTests() {
     startupState: (peerStates: NonEmptyArray<typeof state.value>) => mode(peerStates)
   }, new KeyManager('demo-tests'))
 
-  await test('Initial state number should be zero', () => {
+  await test('DEMO', 'Initial state number should be zero', () => {
     assert.equal(openStar.oracle.state.value.number, 0)
   })
 
-  await test('Adding a positive value', () => {
+  await test('DEMO', 'Adding a positive value', () => {
     methods.add({ value: 10, time: Date.now() })
     assert.equal(openStar.oracle.state.value.number, 10)
   })
 
-  await test('Adding another positive value', () => {
+  await test('DEMO', 'Adding another positive value', () => {
     methods.add({ value: 5, time: Date.now() })
     assert.equal(openStar.oracle.state.value.number, 15)
   })
 
-  await test('Adding zero should return error message', () => {
+  await test('DEMO', 'Adding zero should return error message', () => {
     const result = methods.add({ value: 0, time: Date.now() })
     assert.equal(result, 'Value must be positive')
     assert.equal(openStar.oracle.state.value.number, 15)
   })
 
-  await test('Adding negative value should return error message', () => {
+  await test('DEMO', 'Adding negative value should return error message', () => {
     const result = methods.add({ value: -5, time: Date.now() })
     assert.equal(result, 'Value must be positive')
     assert.equal(openStar.oracle.state.value.number, 15)
   })
 
-  await test('Subtracting a positive value', () => {
+  await test('DEMO', 'Subtracting a positive value', () => {
     methods.subtract({ value: 7, time: Date.now() })
     assert.equal(openStar.oracle.state.value.number, 8)
   })
 
-  await test('Subtracting another positive value', () => {
+  await test('DEMO', 'Subtracting another positive value', () => {
     methods.subtract({ value: 3, time: Date.now() })
     assert.equal(openStar.oracle.state.value.number, 5)
   })
 
-  await test('Subtracting zero should return error message', () => {
+  await test('DEMO', 'Subtracting zero should return error message', () => {
     const result = methods.subtract({ value: 0, time: Date.now() })
     assert.equal(result, 'Value must be positive')
     assert.equal(openStar.oracle.state.value.number, 5)
   })
 
-  await test('Subtracting negative value should return error message', () => {
+  await test('DEMO', 'Subtracting negative value should return error message', () => {
     const result = methods.subtract({ value: -3, time: Date.now() })
     assert.equal(result, 'Value must be positive')
     assert.equal(openStar.oracle.state.value.number, 5)
   })
 
-  await test('Subtracting to negative number is allowed', () => {
+  await test('DEMO', 'Subtracting to negative number is allowed', () => {
     methods.subtract({ value: 10, time: Date.now() })
     assert.equal(openStar.oracle.state.value.number, -5)
   })
   
-  await test('Adding to bring back to positive', () => {
+  await test('DEMO', 'Adding to bring back to positive', () => {
     methods.add({ value: 15, time: Date.now() })
     assert.equal(openStar.oracle.state.value.number, 10)
   })
