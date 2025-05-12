@@ -11,14 +11,14 @@ export class Signalling<Message> {
   peers: Record<`0x${string}`, Peer<Message>> = {}
   messageQueue: SignallingMessage[] = []
   connected = false
-  private readonly onMessage: (_data: Message, _from: `0x${string}`, _callback: (_message: Message) => void) => void
+  private readonly onWebRTCMessage: (_data: Message, _from: `0x${string}`, _callback: (_message: Message) => void) => void
   private readonly connectionHandler: () => Promise<void>
   private readonly keyManager: KeyManager
   private readonly oracleName: string
   private readonly stunServers = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }]
 
-  constructor(oracle: { name: string, onMessage: (_data: Message, _from: `0x${string}`, _callback: (_message: Message) => void) => void, onConnect: () => Promise<void>, keyManager: KeyManager }) {
-    this.onMessage = oracle.onMessage
+  constructor(oracle: { name: string, onWebRTCMessage: (_data: Message, _from: `0x${string}`, _callback: (_message: Message) => void) => void, onConnect: () => Promise<void>, keyManager: KeyManager }) {
+    this.onWebRTCMessage = oracle.onWebRTCMessage
     this.connectionHandler = oracle.onConnect
     this.keyManager = oracle.keyManager
     this.oracleName = oracle.name
@@ -41,12 +41,12 @@ export class Signalling<Message> {
       const message: unknown = JSON.parse(event.data)
       if (typeof message !== 'object' || message === null) return console.error('Failed to decode WS message')
       if (!('from' in message) || !isHexAddress(message.from)) return console.error('Invalid from address')
-      if (message.from === this.keyManager.address) return console.error('Message is from self')
+      // if (message.from === this.keyManager.address) return console.error('Message is from self')
       if ('to' in message && message.to !== this.keyManager.address) return console.error('Message is for someone else', message)
 
-      if ('announce' in message) this.peers[message.from] = new Peer<Message>(this.keyManager, message.from, (message: SignallingMessage) => this.sendWSMessage(message), (data: Message, from: `0x${string}`, callback: (message: Message) => void) => this.onMessage(data, from, callback), () => this.onConnect(), this.stunServers)
+      if ('announce' in message) this.peers[message.from] = new Peer<Message>(this.oracleName, this.keyManager, message.from, (message: SignallingMessage) => this.sendWSMessage(message), (data: Message, from: `0x${string}`, callback: (message: Message) => void) => this.onWebRTCMessage(data, from, callback), () => this.onConnect(), this.stunServers)
       else if ('description' in message) {
-        const peer = this.peers[message.from] ??= new Peer<Message>(this.keyManager, message.from, (message: SignallingMessage) => this.sendWSMessage(message), (data: Message, from: `0x${string}`, callback: (message: Message) => void) => this.onMessage(data, from, callback), () => this.onConnect(), this.stunServers)
+        const peer = this.peers[message.from] ??= new Peer<Message>(this.oracleName, this.keyManager, message.from, (message: SignallingMessage) => this.sendWSMessage(message), (data: Message, from: `0x${string}`, callback: (message: Message) => void) => this.onWebRTCMessage(data, from, callback), () => this.onConnect(), this.stunServers)
         peer.setRemoteDescription(message.description as RTCSessionDescription).catch(console.error)
       } else if ('iceCandidate' in message) {
         const peerConn = this.peers[message.from]
@@ -74,7 +74,7 @@ export class Signalling<Message> {
 
   public sendMessage(message: Message) {
     const payload = { message, signature: this.keyManager.sign(JSON.stringify(message)) }
-    console.log('Sending WebRTC message', payload)
+    console.log(`[${this.oracleName}] Sending WebRTC message`, payload)
     this.peers.forEach((_, peer) => peer.send(payload))
   }
 }

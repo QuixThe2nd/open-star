@@ -62,7 +62,7 @@ export class OpenStar<OracleMethods extends Record<string, (arg: any) => MethodR
     }
   }
 
-  public readonly onMessage = (message: Message<OracleName, OracleMethods, OracleState> | PingPongMessage, from: `0x${string}`, callback: (_message: Message<OracleName, OracleMethods, OracleState> | PingPongMessage) => void): void => {
+  public readonly onWebRTCMessage = (message: Message<OracleName, OracleMethods, OracleState> | PingPongMessage, from: `0x${string}`, callback: (_message: Message<OracleName, OracleMethods, OracleState> | PingPongMessage) => void): void => {
     console.log(`[${message[0].toUpperCase()}] Received message: ${message[1]} from ${from.slice(0, 8)}...`)
     if (message[0] === 'ping') callback(['pong'])
     else if (message[0] === 'pong') console.log('pong')
