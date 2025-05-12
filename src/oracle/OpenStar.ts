@@ -99,10 +99,10 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
 
 				if (Object.keys(this.mempool).includes(id)) return console.error('Transaction already in mempool.')
 				this.mempool[id] = { method: message[2], args: message[3] }
-				this.sendMessage([this.name, 'call', message[2], message[3]])
 				Promise.resolve(this.onCall(message[2], message[3]))
 					.then(() => console.log(this.oracle.state.value))
 					.catch(console.error)
+					this.sendMessage([this.name, 'call', message[2], message[3]])
 			}
 		}
 	}
@@ -137,12 +137,14 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
 	}
 
 	private readonly onCall = async <T extends keyof OracleMethods>(method: T, args: Parameters<OracleMethods[T]>[0]): Promise<string | void> => {
-		if ('methods' in this.oracle) await this.oracle.methods[method]?.(args)
+		// if ('method' in this.nativeMethods) if(method in this.nativeMethods) this.nativeMethods[method](args)
+		if ('methods' in this.oracle) {
+      const status = await this.oracle.methods[method]?.(args)
+      if (typeof status === 'string') console.error(status)
+    }
 	}
 
-	public readonly call = <T extends keyof OracleMethods & string>(method: T, args: Parameters<OracleMethods[T]>[0]): string | void => {
-		this.sendMessage([this.name, 'call', method, args])
-	}
+	public readonly call = <T extends keyof OracleMethods & string>(method: T, args: Parameters<OracleMethods[T]>[0]): string | void => this.sendMessage([this.name, 'call', method, args])
 	private readonly sendState = () => this.signalling.sendMessage([this.name, 'state', this.oracle.state.value])
 	public readonly sendMessage = (message: Message<OracleName, OracleMethods, OracleState>) => this.signalling.sendMessage(message)
 }
