@@ -31,7 +31,7 @@ export class Signalling<Message> {
 		this.ws = new WebSocket(`wss://rooms.deno.dev/openstar-${oracle.name}`)
 
 		this.ws.onopen = () => {
-			console.log(`Announcing to ${this.ws.url}`)
+			console.log(`[${this.oracleName}] Announcing to ${this.ws.url}`)
 
 			//   (async () => {
 			//     const res = await fetch("https://raw.githubusercontent.com/pradt2/always-online-stun/master/valid_ipv4s.txt")
@@ -98,11 +98,8 @@ export class Signalling<Message> {
 	}
 
 	public sendMessage(message: Message) {
-		const payload = {
-			message,
-			signature: this.keyManager.sign(JSON.stringify(message))
-		}
-		console.log(`[${this.oracleName}] Sending WebRTC message`, payload)
+		const payload = { message, signature: this.keyManager.sign(JSON.stringify(message)) }
+		console.log(`[${this.oracleName}] Sending message:`, message[1], message[2])
 		this.peers.forEach((_, peer) => peer.send(payload))
 	}
 }

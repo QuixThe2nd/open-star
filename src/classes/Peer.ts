@@ -55,46 +55,40 @@ export class Peer<Message> {
 			if (!('signature' in data)) return console.error('WebRTC Message invalid 2')
 			if (!isHexAddress(data.signature)) return console.error('Signature is not hex')
 			if (!keyManager.verify(data.signature, JSON.stringify(data.message), peerAddress)) return console.error('Invalid message signature')
-			console.log(`[${this.oracleName}] Received WebRTC message`, data)
-			this.onWebRTCMessage(data.message as Message, peerAddress, (responseMessage: Message) =>
-				this.send({
-					message: responseMessage,
-					signature: keyManager.sign(JSON.stringify(responseMessage))
-				})
-			)
+			this.onWebRTCMessage(data.message as Message, peerAddress, (responseMessage: Message) => this.send({ message: responseMessage, signature: keyManager.sign(JSON.stringify(responseMessage)) }))
 		}
 		this.conn.oniceconnectionstatechange = () => {
-			console.log(`ICE connection state: ${this.conn.iceConnectionState}`)
+			console.log(`[${this.oracleName}] ICE connection state: ${this.conn.iceConnectionState}`)
 			if (this.conn.iceConnectionState === 'failed') this.conn.restartIce()
 		}
 		this.channel.onopen = () => onConnect()
-		this.conn.onsignalingstatechange = () => console.log(`Signaling state changed: ${this.conn.signalingState}`)
-		this.conn.onicegatheringstatechange = () => console.log(`ICE gathering state: ${this.conn.iceGatheringState}`)
-		this.conn.onicecandidateerror = (e) => console.error('Ice candidate error', e.errorText)
-		this.channel.onerror = (e) => console.error('Data channel error:', e)
+		this.conn.onsignalingstatechange = () => console.log(`[${this.oracleName}] Signaling state changed: ${this.conn.signalingState}`)
+		this.conn.onicegatheringstatechange = () => console.log(`[${this.oracleName}] ICE gathering state: ${this.conn.iceGatheringState}`)
+		this.conn.onicecandidateerror = (e) => console.error(`[${this.oracleName}] ICE candidate error`, e.errorText)
+		this.channel.onerror = (e) => console.error(`[${this.oracleName}] Data channel error:`, e)
 		this.channel.onclose = () => {
-			console.log('Data channel closed')
+			console.log(`[${this.oracleName}] Data channel closed`)
 			// setTimeout(() => this.reconnect(), 1000)
 		}
-		this.channel.onbufferedamountlow = () => console.log('Data channel bufferedamountlow')
-		this.channel.onclosing = () => console.log('Data channel closing')
-		this.conn.onconnectionstatechange = () => console.log(`Connect state changed: ${this.conn.connectionState}`)
-		this.conn.ondatachannel = () => console.log('on datachannel')
-		this.conn.ontrack = () => console.log('on track')
+		this.channel.onbufferedamountlow = () => console.log(`[${this.oracleName}] Data channel bufferedamountlow`)
+		this.channel.onclosing = () => console.log(`[${this.oracleName}] Data channel closing`)
+		this.conn.onconnectionstatechange = () => console.log(`[${this.oracleName}] Connect state changed: ${this.conn.connectionState}`)
+		this.conn.ondatachannel = () => console.log(`[${this.oracleName}] on datachannel`)
+		this.conn.ontrack = () => console.log(`[${this.oracleName}] on track`)
 	}
 
 	setRemoteDescription = async (sdp: RTCSessionDescription): Promise<void> => {
-		console.log(`Setting remote description, type: ${sdp.type}, current state: ${this.conn.signalingState}`)
+		console.log(`[${this.oracleName}] Setting remote description, type: ${sdp.type}, current state: ${this.conn.signalingState}`)
 		if (sdp.type === 'offer' && this.conn.signalingState !== 'stable') {
 			if (this.peerAddress > this.keyManager.address) return
 			await Promise.all([this.conn.setLocalDescription({ type: 'rollback' }), this.conn.setRemoteDescription(sdp)])
 		} else await this.conn.setRemoteDescription(sdp)
 
 		if (sdp.type === 'offer') {
-			console.log('Creating answer...')
+			console.log(`[${this.oracleName}] Creating answer...`)
 			await this.conn.setLocalDescription(await this.conn.createAnswer())
 			const description = this.conn.localDescription
-			if (!description) return console.error('Failed to fetch local description')
+			if (!description) return console.error('[${this.oracleName}] Failed to fetch local description')
 			this.sendWSMessage({
 				description,
 				from: this.keyManager.address,
@@ -116,7 +110,7 @@ export class Peer<Message> {
 	//       if (!('signature' in data)) return console.error('WebRTC Message invalid 2')
 	//       if (!isHexAddress(data.signature)) return console.error('Signature is not hex')
 	//       if (!(this.keyManager.verify(data.signature, JSON.stringify(data.message), this.peerAddress))) return console.error('Invalid message signature')
-	//       console.log(`[${this.oracleName}] Received WebRTC message`, data)
+	//       console.log(`[${this.oracleName}] Received message`, data[1])
 	//       this.onWebRTCMessage(data.message as Message, this.peerAddress, (responseMessage: Message) => this.send({ message: responseMessage, signature: this.keyManager.sign(JSON.stringify(responseMessage)) }))
 	//     }
 	//     this.channel.onerror = (e) => console.error('Data channel error:', e)
@@ -134,6 +128,6 @@ export class Peer<Message> {
 	addIceCandidate = async (iceCandidate: RTCIceCandidateInit): Promise<void> => this.conn.addIceCandidate(iceCandidate)
 	send = (message: { message: Message; signature: `0x${string}` }) => {
 		if (this.channel.readyState === 'open') this.channel.send(JSON.stringify(message))
-		else console.warn(`Cannot send message, data channel not open (state: ${this.channel.readyState})`)
+		else console.warn(`[${this.oracleName}] Cannot send message, data channel not open (state: ${this.channel.readyState})`)
 	}
 }
