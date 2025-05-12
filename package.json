@@ -1,36 +1,35 @@
 {
-  "name": "open-star",
-  "main": "src/openstar.ts",
-  "module": "src/openstar.ts",
-  "type": "module",
-  "sideEffects": false,
-  "scripts": {
-    "dev": "tsx src/client.ts",
-    "test": "tsx src/tests/tests.ts",
-    "type-check": "tsc --project tsconfig.json",
-    "lint": "eslint . --fix"
-  },
-  "devDependencies": {
-    "@types/bun": "^1.2.12",
-    "@types/ws": "latest",
-    "@types/express": "^5.0.1",
-    "esbuild": "^0.25.3",
-    "eslint": "^9.26.0",
-    "glob": "^11.0.2",
-    "globals": "^16.0.0",
-    "jiti": "^2.4.2",
-    "tsx": "^4.7.0",
-    "typescript-eslint": "^8.31.1"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
-  },
-  "dependencies": {
-    "@eslint/js": "^9.26.0",
-    "@roamhq/wrtc": "^0.8.0",
-    "@scure/bip32": "^1.7.0",
-    "@scure/bip39": "^1.6.0",
-    "express": "^5.1.0",
-    "ws": "^8.18.2"
-  }
+	"name": "open-star",
+	"main": "src/openstar.ts",
+	"module": "src/openstar.ts",
+	"type": "module",
+	"sideEffects": false,
+	"scripts": {
+		"dev": "tsx src/client.ts",
+		"test": "tsx src/tests/tests.ts",
+		"type-check": "tsc --project tsconfig.json",
+		"lint-check": "biome check .",
+		"lint": "biome check --write ."
+	},
+	"devDependencies": {
+		"@biomejs/biome": "1.9.4",
+		"@types/bun": "^1.2.12",
+		"@types/express": "^5.0.1",
+		"@types/ws": "latest",
+		"esbuild": "^0.25.3",
+		"glob": "^11.0.2",
+		"globals": "^16.0.0",
+		"jiti": "^2.4.2",
+		"tsx": "^4.7.0"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@roamhq/wrtc": "^0.8.0",
+		"@scure/bip32": "^1.7.0",
+		"@scure/bip39": "^1.6.0",
+		"express": "^5.1.0",
+		"ws": "^8.18.2"
+	}
 }
