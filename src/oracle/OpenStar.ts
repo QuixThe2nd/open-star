@@ -50,10 +50,15 @@ export class OpenStar<OracleMethods extends Record<string, (arg: any) => MethodR
       this.oracle.state.set(await this.oracle.startupState(peerStates as NonEmptyArray<OracleState>))
       this.sendState()
 
-      const startTime = +new Date()
-      await new Promise((resolve) => setTimeout(resolve, (Math.floor(startTime / this.oracle.epochTime) + 1) * this.oracle.epochTime - startTime))
       this.epoch()
       setInterval(() => this.epoch(), this.oracle.epochTime)
+      if (this.oracle.epochTime !== undefined) {
+        const startTime = +new Date()
+        const epochTime = this.oracle.epochTime
+        await new Promise((resolve) => setTimeout(resolve, (Math.floor(startTime / epochTime) + 1) * epochTime - startTime))
+        this.epoch()
+        setInterval(() => this.epoch(), epochTime)
+      }
     }
   }
 

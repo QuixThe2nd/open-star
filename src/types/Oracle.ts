@@ -15,7 +15,7 @@ export type MempoolItem<M extends Methods<any>> = { method: keyof M, args: Param
 type BaseOracle<OracleMethods extends Record<string, (arg: any) => MethodReturn> = Record<string, (arg: any) => MethodReturn>, OracleState extends Record<string, unknown> = Record<string, unknown>, OracleName extends string = string> = {
   name: OracleName
   state: StateManager<OracleState>,
-  epochTime: number
+  epochTime?: number
   startupState: (_peerStates: NonEmptyArray<OracleState>) => Promise<OracleState> | OracleState,
   reputationChange?: (_peer: `0x${string}`, reputation: number) => void,
   transactionToID?: <T extends keyof OracleMethods>(_method: T, _args: Parameters<OracleMethods[T]>[0]) => string
