@@ -82,7 +82,7 @@ export class OpenStar<OracleMethods extends Record<string, (arg: any) => MethodR
         else if (this.epochCount <= 0 && Object.keys(this.peerStates[from].lastSend ?? '{}').length !== 0) this.peerStates[from].reputation--
       } else if (message[1] === 'call') {
         const id = this.oracle.transactionToID ? this.oracle.transactionToID(message[2], message[3]) : JSON.stringify({ method: message[2], args: message[3] })
-        if ('time' in message[3] && message[3].time < +new Date() - this.oracle.epochTime) return console.error('Transaction too old.')
+        if (this.oracle.epochTime !== undefined && 'time' in message[3] && message[3].time < +new Date() - this.oracle.epochTime) return console.error('Transaction too old.')
 
         if ('signature' in message[3]) {
           const { signature, ...args } = message[3]
@@ -99,7 +99,7 @@ export class OpenStar<OracleMethods extends Record<string, (arg: any) => MethodR
     }
   }
 
-  private readonly epoch = (): void => {
+  public readonly epoch = (): void => {
     console.log(`[${this.name}] Epoch:`, new Date().toISOString())
     this.epochCount++
 
