@@ -19,6 +19,7 @@ type BaseOracle<OracleMethods extends Record<string, (arg: any) => MethodReturn>
   startupState: (_peerStates: NonEmptyArray<OracleState>) => Promise<OracleState> | OracleState,
   reputationChange?: (_peer: `0x${string}`, reputation: number) => void,
   transactionToID?: <T extends keyof OracleMethods>(_method: T, _args: Parameters<OracleMethods[T]>[0]) => string
+  onConnect?: () => void | Promise<void>
 } & ({
   methods: OracleMethods
   methodDescriptions: { [K in keyof OracleMethods]: Parameters<OracleMethods[keyof OracleMethods]>[0] }
