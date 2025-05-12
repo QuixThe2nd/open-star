@@ -21,7 +21,8 @@ export class Hex {
   readonly value: `0x${string}`
 
   constructor(value: `0x${string}`) {
-    if (value.startsWith('0x-')) throw new Error('Hex value is negative')
+    if (value.startsWith("0x-")) throw new Error("Hex value is negative")
+    else if (value === "0x") throw new Error("Hex value is null")
     this.value = value
   }
 
