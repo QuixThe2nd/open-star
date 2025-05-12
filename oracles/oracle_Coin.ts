@@ -2,10 +2,7 @@ import { type ORC20State, OpenStar, OpenStarRC20, type Oracle, StateManager, mod
 
 const state = new StateManager<ORC20State>({ balances: {} })
 
-function calculateAPR(): number {
-	const stakingRate = openStar.stakingRate()
-	return (0.05 * (1 - stakingRate * 0.5)) / stakingRate
-}
+const calculateAPR = () => (0.05 * (1 - openStar.stakingRate * 0.5)) / openStar.stakingRate
 
 const reputationChange = (peer: `0x${string}`, reputation: number): void => {
 	const epochYield = calculateAPR() / (365 * 24 * 60 * 60 * 1000) / 5_000

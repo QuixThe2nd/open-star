@@ -7,10 +7,7 @@ class NameServiceOracle {
 	})
 	public readonly ORC20 = {
 		ticker: 'NS',
-		calculateAPR: () => {
-			const stakingRate = this.openStarRC20.stakingRate()
-			return ((0.05 * (1 - stakingRate * 0.5)) / stakingRate) * 100
-		}
+		calculateAPR: () => ((0.05 * (1 - this.openStarRC20.stakingRate * 0.5)) / this.openStarRC20.stakingRate) * 100
 	}
 	public readonly epochTime = 30_000
 	public readonly name = 'ORC20_NAMESERVICE'

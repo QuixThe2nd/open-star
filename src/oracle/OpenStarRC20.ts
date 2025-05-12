@@ -22,7 +22,7 @@ export class OpenStarRC20<OracleState extends ORC20State = ORC20State, OracleNam
 		})
 		return coinsStaked
 	}
-	stakingRate() {
+	get stakingRate() {
 		return this.circulatingSupply() === 0n || this.stakedSupply() === 0n ? 1 : Number(this.stakedSupply()) / Number(this.circulatingSupply())
 	}
 	mint(args: { to: `0x${string}`; amount: `0x${string}` }) {

@@ -18,12 +18,9 @@ const methodDescriptions: {
 }
 const startupState = (peerStates: NonEmptyArray<typeof state.value>) => mode(peerStates)
 const transactionToID = <T extends keyof typeof methods>(method: T, args: Parameters<(typeof methods)[T]>[0]) => `${method}-${JSON.stringify(args)}`
-const ORC20 = { ticker: 'RAD', calculateAPR }
 
-function calculateAPR(): number {
-	const stakingRate = openStar.stakingRate()
-	return (0.05 * (1 - stakingRate * 0.5)) / stakingRate
-}
+const calculateAPR = () => (0.05 * (1 - openStar.stakingRate * 0.5)) / openStar.stakingRate
+const ORC20 = { ticker: 'RAD', calculateAPR }
 
 function reputationChange(peer: `0x${string}`, reputation: number) {
 	const epochYield = calculateAPR() / (365 * 24 * 60 * 60 * 1000) / 5_000
