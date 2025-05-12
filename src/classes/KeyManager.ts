@@ -8,6 +8,8 @@ const fs = typeof window === 'undefined' ? await import('fs') : undefined
 
 const keccak256 = <T extends `0x${string}` | Uint8Array>(value: T): T => (typeof value === 'string' ? Hex.fromBytes(keccak_256(new Hex(value).bytes)).value : keccak_256(value)) as T
 
+export const hashString = (input: string): `0x${string}` => Hex.fromBytes(keccak_256(Buffer.from(input))).value
+
 function toRecoveryBit(yParityOrV: number) {
   if (yParityOrV === 0 || yParityOrV === 1) return yParityOrV
   if (yParityOrV === 27) return 0
