@@ -21,11 +21,7 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
 		this.keyManager = keyManager ?? new KeyManager()
 		this.oracle = oracle
 		this.signalling = new Signalling<Message<OracleName, OracleMethods, OracleState> | PingPongMessage>(this)
-		if ('setOpenStar' in oracle) this.initializeExtended()
-	}
-
-	protected initializeExtended(): void {
-		if (this.oracle.setOpenStar) this.oracle.setOpenStar(this)
+		if ('setOpenStar' in oracle && this.oracle.setOpenStar) this.oracle.setOpenStar(this)
 	}
 
 	get peerStates() {
@@ -102,7 +98,7 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
 				Promise.resolve(this.onCall(message[2], message[3]))
 					.then(() => console.log(this.oracle.state.value))
 					.catch(console.error)
-					this.sendMessage([this.name, 'call', message[2], message[3]])
+				this.sendMessage([this.name, 'call', message[2], message[3]])
 			}
 		}
 	}
@@ -139,9 +135,9 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
 	private readonly onCall = async <T extends keyof OracleMethods>(method: T, args: Parameters<OracleMethods[T]>[0]): Promise<string | void> => {
 		// if ('method' in this.nativeMethods) if(method in this.nativeMethods) this.nativeMethods[method](args)
 		if ('methods' in this.oracle) {
-      const status = await this.oracle.methods[method]?.(args)
-      if (typeof status === 'string') console.error(status)
-    }
+			const status = await this.oracle.methods[method]?.(args)
+			if (typeof status === 'string') console.error(status)
+		}
 	}
 
 	public readonly call = <T extends keyof OracleMethods & string>(method: T, args: Parameters<OracleMethods[T]>[0]): string | void => this.sendMessage([this.name, 'call', method, args])

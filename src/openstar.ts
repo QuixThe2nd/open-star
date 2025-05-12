@@ -1,6 +1,7 @@
 export { KeyManager } from './classes/KeyManager'
 export { start } from './oracle'
 export { OpenStar } from './oracle/OpenStar'
+export { OpenStarRC1 } from './oracle/OpenStarRC1'
 export { OpenStarRC20 } from './oracle/OpenStarRC20'
 export { StateManager } from './classes/StateManager'
 export { mode, parseEther } from './utils'

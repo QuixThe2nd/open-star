@@ -1,4 +1,4 @@
-import { type ORC20Oracle, type ORC20State, type OpenStarRC20, StateManager, mode, parseEther } from '..'
+import { type ORC20State, OpenStar, OpenStarRC20, type Oracle, StateManager, mode, parseEther } from '..'
 
 const state = new StateManager<ORC20State>({ balances: {} })
 
@@ -24,18 +24,10 @@ const reputationChange = (peer: `0x${string}`, reputation: number): void => {
 	}
 }
 
-let openStar: OpenStarRC20
-const setOpenStar = (newOpenStar: OpenStarRC20) => {
-	openStar = newOpenStar
+let openStar: OpenStarRC20<typeof state.value, 'ORC20_COIN'>
+const setOpenStar = (newOpenStar: OpenStar<typeof state.value, 'ORC20_COIN'>) => {
+	openStar = new OpenStarRC20(newOpenStar)
 }
 
-const oracle: ORC20Oracle = {
-	name: 'ORC20_COIN',
-	epochTime: 5_000,
-	ORC20: { ticker: 'STAR', calculateAPR },
-	startupState: (peerStates) => mode(peerStates),
-	state,
-	reputationChange,
-	setOpenStar
-}
+const oracle: Oracle<typeof state.value, 'ORC20_COIN'> = { name: 'ORC20_COIN', epochTime: 5_000, ORC20: { ticker: 'STAR', calculateAPR }, startupState: mode, state, reputationChange, setOpenStar }
 export default oracle

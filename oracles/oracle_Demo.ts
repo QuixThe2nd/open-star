@@ -16,7 +16,7 @@ const methodDescriptions = {
 	subtract: { value: 0 }
 }
 
-const oracle: Oracle<typeof methods, typeof state.value> = {
+const oracle: Oracle<typeof state.value, 'DEMO', typeof methods> = {
 	name: 'DEMO',
 	epochTime: 5_000,
 	state,

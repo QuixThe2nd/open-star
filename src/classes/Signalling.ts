@@ -99,7 +99,7 @@ export class Signalling<Message> {
 
 	public sendMessage(message: Message) {
 		const payload = { message, signature: this.keyManager.sign(JSON.stringify(message)) }
-		console.log(`[${this.oracleName}] Sending message:`, message[1], message[2])
+		console.log(`[${this.oracleName}] Sending message:`, (message as [string, string])[1], (message as [string, string, string])[2])
 		this.peers.forEach((_, peer) => peer.send(payload))
 	}
 }
