@@ -13,13 +13,15 @@ export class Peer<Message> {
   private readonly keyManager: KeyManager
   private readonly peerAddress: `0x${string}`
   private readonly sendWSMessage: (message: SignallingMessage) => void
-  private readonly onMessage: (_data: Message, _from: `0x${string}`, _callback: (_message: Message) => void) => void
+  private readonly onWebRTCMessage: (_data: Message, _from: `0x${string}`, _callback: (_message: Message) => void) => void
+  private readonly oracleName: string
 
   constructor(oracleName: string, keyManager: KeyManager, peerAddress: `0x${string}`, sendWSMessage: typeof this.sendWSMessage, onWebRTCMessage: typeof this.onWebRTCMessage, onConnect: () => void, iceServers: { urls: string }[]) {
     this.sendWSMessage = sendWSMessage
     this.onWebRTCMessage = onWebRTCMessage
     this.keyManager = keyManager
     this.peerAddress = peerAddress
+    this.oracleName = oracleName
 
     this.conn = new RTCPeerConnection({ iceServers })
     this.channel = this.conn.createDataChannel("chat", { negotiated: true, id: 0 })
@@ -55,7 +57,7 @@ export class Peer<Message> {
     this.channel.onerror = (e) => console.error('Data channel error:', e)
     this.channel.onclose = () => {
       console.log('Data channel closed')
-      setTimeout(() => this.reconnect(), 1000)
+      // setTimeout(() => this.reconnect(), 1000)
     }
     this.channel.onbufferedamountlow = () => console.log('Data channel bufferedamountlow')
     this.channel.onclosing = () => console.log('Data channel closing')
@@ -80,33 +82,33 @@ export class Peer<Message> {
     }
   }
   
-  reconnect = (): void => {
-    console.log('Attempting to reconnect...')
+  // reconnect = (): void => {
+  //   console.log('Attempting to reconnect...')
     
-    if (this.conn.connectionState !== 'closed' && this.conn.connectionState !== 'failed') {
-      this.channel = this.conn.createDataChannel("chat", { negotiated: true, id: 0 })
+  //   if (this.conn.connectionState !== 'closed' && this.conn.connectionState !== 'failed') {
+  //     this.channel = this.conn.createDataChannel("chat", { negotiated: true, id: 0 })
       
-      this.channel.onmessage = (e) => {
-        if (typeof e.data !== 'string') return console.error('WebRTC Message not a string')
-        const data: unknown = JSON.parse(e.data)
-        if (typeof data !== 'object' || data === null || !('message' in data)) return console.error('WebRTC Message invalid 1')
-        if (!('signature' in data)) return console.error('WebRTC Message invalid 2')
-        if (!isHexAddress(data.signature)) return console.error('Signature is not hex')
-        if (!(this.keyManager.verify(data.signature, JSON.stringify(data.message), this.peerAddress))) return console.error('Invalid message signature')
-        console.log(`Received WebRTC message`, data)
-        this.onMessage(data.message as Message, this.peerAddress, (responseMessage: Message) => this.send({ message: responseMessage, signature: this.keyManager.sign(JSON.stringify(responseMessage)) }))
-      }
-      this.channel.onerror = (e) => console.error('Data channel error:', e)
-      this.channel.onclose = () => {
-        console.log('Data channel closed')
-        setTimeout(() => this.reconnect(), 5000)
-      }
-      this.channel.onbufferedamountlow = () => console.log('Data channel bufferedamountlow')
-      this.channel.onclosing = () => console.log('Data channel closing')
+  //     this.channel.onmessage = (e) => {
+  //       if (typeof e.data !== 'string') return console.error('WebRTC Message not a string')
+  //       const data: unknown = JSON.parse(e.data)
+  //       if (typeof data !== 'object' || data === null || !('message' in data)) return console.error('WebRTC Message invalid 1')
+  //       if (!('signature' in data)) return console.error('WebRTC Message invalid 2')
+  //       if (!isHexAddress(data.signature)) return console.error('Signature is not hex')
+  //       if (!(this.keyManager.verify(data.signature, JSON.stringify(data.message), this.peerAddress))) return console.error('Invalid message signature')
+  //       console.log(`[${this.oracleName}] Received WebRTC message`, data)
+  //       this.onWebRTCMessage(data.message as Message, this.peerAddress, (responseMessage: Message) => this.send({ message: responseMessage, signature: this.keyManager.sign(JSON.stringify(responseMessage)) }))
+  //     }
+  //     this.channel.onerror = (e) => console.error('Data channel error:', e)
+  //     this.channel.onclose = () => {
+  //       console.log('Data channel closed')
+  //       setTimeout(() => this.reconnect(), 5000)
+  //     }
+  //     this.channel.onbufferedamountlow = () => console.log('Data channel bufferedamountlow')
+  //     this.channel.onclosing = () => console.log('Data channel closing')
       
-      this.conn.restartIce()
-    }
-  }
+  //     this.conn.restartIce()
+  //   }
+  // }
 
   addIceCandidate = async (iceCandidate: RTCIceCandidateInit): Promise<void> => this.conn.addIceCandidate(iceCandidate)
   send = (message: { message: Message, signature: `0x${string}` }) => {
