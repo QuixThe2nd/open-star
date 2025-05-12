@@ -1,4 +1,4 @@
-import { StateManager, type ORC20Oracle, type NonEmptyArray, type Oracle, type ORC20State, mode, parseEther } from ".."
+import { StateManager, type ORC20Oracle, type NonEmptyArray, type ORC20State, mode, parseEther, type OpenStarRC20 } from ".."
 
 class NameServiceOracle {
   public state = new StateManager<ORC20State & { hostnames: Record<`${string}.star`, `0x${string}`> }>({ balances: {}, hostnames: {} })
@@ -10,8 +10,8 @@ class NameServiceOracle {
     }
   }
   public readonly epochTime = 30_000
-  public readonly name = 'NAMESERVICE'
-  openStar!: ORC20Oracle<typeof this.state.value, typeof this.methods>
+  public readonly name = 'ORC20_NAMESERVICE'
+  openStar!: OpenStarRC20<typeof this.methods, typeof this.state.value>
 
   readonly methods = {
     register: (args: { from: `0x${string}`, hostname: `${string}.star`, signature: `0x${string}` }): void | string => {
@@ -46,11 +46,11 @@ class NameServiceOracle {
   readonly transactionToID = <T extends keyof typeof this.methods>(method: T, args: Parameters<typeof this.methods[T]>[0]) => `${method}-${JSON.stringify(args)}`
   readonly startupState = (peerStates: NonEmptyArray<typeof this.state.value>) => mode(peerStates)
 
-  readonly setOpenStar = (newOpenStar: ORC20Oracle<typeof this.state.value, typeof this.methods>) => {
+  readonly setOpenStar = (newOpenStar: OpenStarRC20<typeof this.methods, typeof this.state.value>) => {
     this.openStar = newOpenStar
   }
 }
 
 const nameService = new NameServiceOracle()
-const oracle: Oracle<typeof nameService.state.value, typeof nameService.methods> = nameService
+const oracle: ORC20Oracle<typeof nameService.methods, typeof nameService.state.value> = nameService
 export default oracle

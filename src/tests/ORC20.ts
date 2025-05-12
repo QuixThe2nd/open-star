@@ -1,17 +1,16 @@
 import { strict as assert } from 'assert'
 import { KeyManager } from '../classes/KeyManager'
 import { StateManager } from '../classes/StateManager'
-import { ORC20Oracle } from '../oracle/ORC20'
 import { mode, parseEther } from '../utils'
 import type { NonEmptyArray } from '../types/generic'
-import type { ORC20State } from '../types/ORC20'
+import type { ORC20State } from '../types/ORC'
 import { test } from './tests'
+import { OpenStarRC20 } from '../openstar'
 
 export async function ORC20Tests() {
-  const openStar = new ORC20Oracle({
-    name: 'TEST_COIN',
+  const openStar = new OpenStarRC20({
+    name: 'ORC20_TEST',
     epochTime: 5000,
-    ORC20: { ticker: 'TEST', calculateAPR: () => { return 0 } },
     state: new StateManager<ORC20State>({ balances: {} }),
     startupState: (peerStates: NonEmptyArray<ORC20State>) => mode(peerStates)
   }, new KeyManager('tests'))

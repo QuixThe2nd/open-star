@@ -56,5 +56,5 @@ const reputationChange = (_peer: `0x${string}`, _reputation: number) => {
 const startupState = (peerStates: NonEmptyArray<typeof state.value>) => mode(peerStates)
 const transactionToID = <T extends keyof typeof methods>(method: T, args: Parameters<typeof methods[T]>[0]) => `${method}-${JSON.stringify(args)}`
 
-const oracle: Oracle<typeof state.value, typeof methods> = { startupState, reputationChange, state, methods, methodDescriptions, transactionToID, epochTime: 60_000, name: 'BRIDGE' }
+const oracle: Oracle<typeof methods, typeof state.value> = { startupState, reputationChange, state, methods, methodDescriptions, transactionToID, epochTime: 60_000, name: 'BRIDGE' }
 export default oracle

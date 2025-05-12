@@ -16,5 +16,5 @@ const methodDescriptions = {
   subtract: { value: 0 },
 }
 
-const oracle: Oracle<typeof state.value, typeof methods> = { name: 'DEMO', epochTime: 5_000, state, methods, methodDescriptions, startupState: (peerStates) => mode(peerStates) }
+const oracle: Oracle<typeof methods, typeof state.value> = { name: 'DEMO', epochTime: 5_000, state, methods, methodDescriptions, startupState: (peerStates) => mode(peerStates) }
 export default oracle

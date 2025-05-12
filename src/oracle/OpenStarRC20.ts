@@ -1,8 +1,8 @@
 import { OpenStar } from "./OpenStar"
 import type { MethodReturn } from "../types/Oracle"
-import type { ORC20State } from "../types/ORC20"
+import type { ORC20State } from "../types/ORC"
 
-export class ORC20Oracle<OracleState extends ORC20State = ORC20State, OracleMethods extends Record<string, (arg: any) => MethodReturn> = Record<string, (arg: any) => MethodReturn>, OracleName extends string = string> extends OpenStar<OracleState, OracleMethods, OracleName> {
+export class OpenStarRC20<OracleMethods extends Record<string, (arg: any) => MethodReturn> = Record<string, (arg: any) => MethodReturn>, OracleState extends ORC20State = ORC20State, OracleName extends `ORC20_${string}` = `ORC20_${string}`> extends OpenStar<OracleMethods, OracleState, OracleName> {
   protected override initializeExtended(): void {
     if (this.oracle.setOpenStar) this.oracle.setOpenStar(this)
   }
