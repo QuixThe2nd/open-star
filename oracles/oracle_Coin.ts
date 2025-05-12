@@ -14,10 +14,7 @@ const reputationChange = (peer: `0x${string}`, reputation: number): void => {
 		})
 	} else if (reputation < 0 && state.value.balances[peer] !== undefined) {
 		console.log('[COIN] Slashing', peer.slice(0, 8) + '...')
-		openStar.burn({
-			to: peer,
-			amount: ((BigInt(state.value.balances[peer] ?? `0x0`) * 9n) / 10n).toHex().value
-		})
+		openStar.burn({ to: peer, amount: ((BigInt(state.value.balances[peer] ?? `0x0`) * 9n) / 10n).toHex().value })
 	}
 }
 
