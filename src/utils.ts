@@ -1,17 +1,15 @@
 import { Hex } from "./classes/Hex"
 import type { NonEmptyArray } from "./types/generic"
 
-export function formatEther(value: bigint, decimals = 8): number {
- const divisor = 10n ** BigInt(decimals)
- const wholePart = value / divisor
- const fractionalPart = value % divisor
- if (fractionalPart === 0n) return Number(wholePart)
- return Number(`${wholePart}.${fractionalPart.toString().padStart(decimals, '0').replace(/0+$/, '')}`)
-}
+// export function formatEther(value: bigint, decimals = 8): number {
+//  const divisor = 10n ** BigInt(decimals)
+//  const wholePart = value / divisor
+//  const fractionalPart = value % divisor
+//  if (fractionalPart === 0n) return Number(wholePart)
+//  return Number(`${wholePart}.${fractionalPart.toString().padStart(decimals, '0').replace(/0+$/, '')}`)
+// }
 
-export function parseEther(value: number, decimals = 8): bigint {
-  return BigInt(Math.round(value * Number(10n ** BigInt(decimals)) / Number(1n)))
-}
+export const parseEther = (value: number, decimals = 8): bigint => BigInt(Math.round(value * Number(10n ** BigInt(decimals)) / Number(1n)))
 
 export const mode = <State>(arr: NonEmptyArray<State>) => arr.toSorted((a,b) => arr.filter(v => v===a).length - arr.filter(v => v===b).length).pop() as State
 
