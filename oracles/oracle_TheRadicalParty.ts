@@ -1,4 +1,4 @@
-import { type NonEmptyArray, type ORC20Oracle, type ORC20State, type OpenStarRC20, StateManager, mode, parseEther } from '..'
+import { type NonEmptyArray, type ORC20State, OpenStar, OpenStarRC20, type Oracle, StateManager, mode, parseEther } from '..'
 
 const state = new StateManager<ORC20State & { laws: string[] }>({
 	laws: [],
@@ -43,12 +43,12 @@ function reputationChange(peer: `0x${string}`, reputation: number) {
 	}
 }
 
-let openStar: OpenStarRC20<typeof methods, typeof state.value>
-const setOpenStar = (newOpenStar: OpenStarRC20<typeof methods, typeof state.value>) => {
-	openStar = newOpenStar
+let openStar: OpenStarRC20<typeof state.value, 'ORC20_THERADICALPARTY', typeof methods>
+const setOpenStar = (newOpenStar: OpenStar<typeof state.value, 'ORC20_THERADICALPARTY', typeof methods>) => {
+	openStar = new OpenStarRC20(newOpenStar)
 }
 
-const oracle: ORC20Oracle<typeof methods, typeof state.value> = {
+const oracle: Oracle<typeof state.value, 'ORC20_THERADICALPARTY', typeof methods> = {
 	name: 'ORC20_THERADICALPARTY',
 	epochTime: 15_000,
 	ORC20,

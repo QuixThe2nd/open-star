@@ -1,7 +1,6 @@
 import type { StateManager } from '../classes/StateManager'
 import type { OpenStar } from '../oracle/OpenStar'
-import type { OpenStarRC20 } from '../oracle/OpenStarRC20'
-import type { ORC20Flags, ORC20State } from './ORC'
+import type { ORC20Flags } from './ORC'
 import type { NonEmptyArray } from './generic'
 
 export type MethodReturn = string | void | Promise<string | void>
@@ -28,7 +27,7 @@ export type MempoolItem<M extends Methods<any>> = {
 	args: Parameters<M[keyof M]>[0]
 }
 
-type BaseOracle<OracleMethods extends Record<string, (arg: any) => MethodReturn> = Record<string, (arg: any) => MethodReturn>, OracleState extends Record<string, unknown> = Record<string, unknown>, OracleName extends string = string> = {
+export type Oracle<OracleState extends Record<string, unknown> = Record<string, unknown>, OracleName extends string = string, OracleMethods extends Record<string, (arg: any) => MethodReturn> = Record<string, (arg: any) => MethodReturn>> = {
 	name: OracleName
 	state: StateManager<OracleState>
 	epochTime?: number
@@ -36,29 +35,13 @@ type BaseOracle<OracleMethods extends Record<string, (arg: any) => MethodReturn>
 	reputationChange?: (_peer: `0x${string}`, reputation: number) => void
 	transactionToID?: <T extends keyof OracleMethods>(_method: T, _args: Parameters<OracleMethods[T]>[0]) => string
 	onConnect?: () => void | Promise<void>
+	setOpenStar?(openStar: OpenStar<OracleState, OracleName, OracleMethods>): void
+	ORC1?: true
+	ORC20?: ORC20Flags
 } & (
 	| {
 			methods: OracleMethods
-			methodDescriptions: {
-				[K in keyof OracleMethods]: Parameters<OracleMethods[keyof OracleMethods]>[0]
-			}
+			methodDescriptions: { [K in keyof OracleMethods]: Parameters<OracleMethods[keyof OracleMethods]>[0] }
 	  }
 	| object
 )
-
-export type Oracle<OracleMethods extends Record<string, (arg: any) => MethodReturn> = Record<string, (arg: any) => MethodReturn>, OracleState extends Record<string, unknown> = Record<string, unknown>, OracleName extends string = string> = BaseOracle<
-	OracleMethods,
-	OracleState,
-	OracleName
-> & {
-	setOpenStar?(openStar: OpenStar<OracleMethods, OracleState, OracleName>): void
-}
-
-export type ORC20Oracle<OracleMethods extends Record<string, (arg: any) => MethodReturn> = Record<string, (arg: any) => MethodReturn>, OracleState extends ORC20State = ORC20State, OracleName extends `ORC20_${string}` = `ORC20_${string}`> = BaseOracle<
-	OracleMethods,
-	OracleState,
-	OracleName
-> & {
-	ORC20: ORC20Flags
-	setOpenStar?(openStar: OpenStarRC20<OracleMethods, OracleState, OracleName>): void
-}

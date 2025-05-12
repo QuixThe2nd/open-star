@@ -4,28 +4,24 @@ import type { MempoolItem, Message, MethodReturn, Oracle, PeerStates, PingPongMe
 import type { NonEmptyArray } from '../types/generic'
 import { isHexAddress } from '../utils'
 
-export class OpenStar<OracleMethods extends Record<string, (arg: any) => MethodReturn> = Record<string, (arg: any) => MethodReturn>, OracleState extends Record<string, unknown> = Record<string, unknown>, OracleName extends string = string> {
-	public readonly signalling: Signalling<Message<OracleName, OracleMethods, OracleState> | PingPongMessage>
+export class OpenStar<OracleState extends Record<string, unknown> = Record<string, unknown>, OracleName extends string = string, OracleMethods extends Record<string, (arg: any) => MethodReturn> = Record<string, (arg: any) => MethodReturn>> {
+	private readonly signalling: Signalling<Message<OracleName, OracleMethods, OracleState> | PingPongMessage>
 	private epochCount = -1
 	readonly keyManager: KeyManager
 	private lastEpochState = ''
 	connected = false
 	readonly name: OracleName
-	public readonly oracle: Oracle<OracleMethods, OracleState, OracleName>
+	public readonly oracle: Oracle<OracleState, OracleName, OracleMethods>
 	public readonly _peerStates: PeerStates<OracleState> = {}
 	private mempool: Record<string, MempoolItem<OracleMethods>> = {}
 	connectHandler?: () => void
 
-	constructor(oracle: Oracle<OracleMethods, OracleState, OracleName>, keyManager?: KeyManager) {
+	constructor(oracle: Oracle<OracleState, OracleName, OracleMethods>, keyManager?: KeyManager) {
 		this.name = oracle.name
 		this.keyManager = keyManager ?? new KeyManager()
 		this.oracle = oracle
 		this.signalling = new Signalling<Message<OracleName, OracleMethods, OracleState> | PingPongMessage>(this)
-		if ('setOpenStar' in oracle) this.initializeExtended()
-	}
-
-	protected initializeExtended(): void {
-		if (this.oracle.setOpenStar) this.oracle.setOpenStar(this)
+		if ('setOpenStar' in oracle && this.oracle.setOpenStar) this.oracle.setOpenStar(this)
 	}
 
 	get peerStates() {
@@ -99,10 +95,10 @@ export class OpenStar<OracleMethods extends Record<string, (arg: any) => MethodR
 
 				if (Object.keys(this.mempool).includes(id)) return console.error('Transaction already in mempool.')
 				this.mempool[id] = { method: message[2], args: message[3] }
-				this.sendMessage([this.name, 'call', message[2], message[3]])
 				Promise.resolve(this.onCall(message[2], message[3]))
 					.then(() => console.log(this.oracle.state.value))
 					.catch(console.error)
+				this.sendMessage([this.name, 'call', message[2], message[3]])
 			}
 		}
 	}
@@ -137,12 +133,14 @@ export class OpenStar<OracleMethods extends Record<string, (arg: any) => MethodR
 	}
 
 	private readonly onCall = async <T extends keyof OracleMethods>(method: T, args: Parameters<OracleMethods[T]>[0]): Promise<string | void> => {
-		if ('methods' in this.oracle) await this.oracle.methods[method]?.(args)
+		// if ('method' in this.nativeMethods) if(method in this.nativeMethods) this.nativeMethods[method](args)
+		if ('methods' in this.oracle) {
+			const status = await this.oracle.methods[method]?.(args)
+			if (typeof status === 'string') console.error(status)
+		}
 	}
 
-	public readonly call = <T extends keyof OracleMethods & string>(method: T, args: Parameters<OracleMethods[T]>[0]): string | void => {
-		this.sendMessage([this.name, 'call', method, args])
-	}
+	public readonly call = <T extends keyof OracleMethods & string>(method: T, args: Parameters<OracleMethods[T]>[0]): string | void => this.sendMessage([this.name, 'call', method, args])
 	private readonly sendState = () => this.signalling.sendMessage([this.name, 'state', this.oracle.state.value])
 	public readonly sendMessage = (message: Message<OracleName, OracleMethods, OracleState>) => this.signalling.sendMessage(message)
 }
