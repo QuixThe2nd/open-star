@@ -8,15 +8,17 @@ import { mode, parseEther } from '../utils'
 import { test } from './tests'
 
 export async function ORC20Tests() {
-	const ORC20 = new OpenStarRC20(new OpenStar(
-		{
-			name: 'ORC20_TEST',
-			epochTime: 5000,
-			state: new StateManager<ORC20State>({ balances: {} }),
-			startupState: (peerStates: NonEmptyArray<ORC20State>) => mode(peerStates)
-		},
-		new KeyManager('tests')
-	))
+	const ORC20 = new OpenStarRC20(
+		new OpenStar(
+			{
+				name: 'ORC20_TEST',
+				epochTime: 5000,
+				state: new StateManager<ORC20State>({ balances: {} }),
+				startupState: (peerStates: NonEmptyArray<ORC20State>) => mode(peerStates)
+			},
+			new KeyManager('tests')
+		)
+	)
 
 	const alice: `0x${string}` = '0x1111111111111111111111111111111111111111'
 	const bob: `0x${string}` = '0x2222222222222222222222222222222222222222'

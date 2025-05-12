@@ -38,7 +38,10 @@ export type Oracle<OracleState extends Record<string, unknown> = Record<string, 
 	setOpenStar?(openStar: OpenStar<OracleState, OracleName, OracleMethods>): void
 	ORC1?: true
 	ORC20?: ORC20Flags
-} & ({
-	methods: OracleMethods
-	methodDescriptions: { [K in keyof OracleMethods]: Parameters<OracleMethods[keyof OracleMethods]>[0] }
-} | object)
+} & (
+	| {
+			methods: OracleMethods
+			methodDescriptions: { [K in keyof OracleMethods]: Parameters<OracleMethods[keyof OracleMethods]>[0] }
+	  }
+	| object
+)

@@ -5,7 +5,7 @@ import { OpenStar } from './OpenStar'
 
 export class OpenStarRC1<OracleState extends ORC1State = ORC1State, OracleName extends `ORC1_${string}` = `ORC1_${string}`, OracleMethods extends Record<string, (arg: any) => MethodReturn> = Record<string, (arg: any) => MethodReturn>> {
 	public readonly openStar: OpenStar<OracleState, OracleName, OracleMethods>
-	constructor	(openStar: OpenStar<OracleState, OracleName, OracleMethods>) {
+	constructor(openStar: OpenStar<OracleState, OracleName, OracleMethods>) {
 		this.openStar = openStar
 	}
 	getLatestBlock = () => {

@@ -17,7 +17,7 @@ class NameServiceOracle {
 	openStarRC20!: OpenStarRC20<typeof this.state.value, 'ORC20_NAMESERVICE', typeof this.methods>
 
 	readonly methods = {
-		register: (args: { from: `0x${string}`, hostname: `${string}.star`, signature: `0x${string}` }): void | string => {
+		register: (args: { from: `0x${string}`; hostname: `${string}.star`; signature: `0x${string}` }): void | string => {
 			if (this.state.value.hostnames[args.hostname] !== undefined) return 'Hostname unavailable'
 
 			const balance = this.state.value.balances[args.from]

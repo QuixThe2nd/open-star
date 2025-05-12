@@ -1,9 +1,9 @@
 import { KeyManager, start } from '.'
-import coinOracle from '../oracles/oracle_Coin'
-import nameServiceOracle from '../oracles/oracle_NameService'
-import demoOracle from '../oracles/oracle_Demo'
-import theRadicalParty from '../oracles/oracle_TheRadicalParty'
 import blockchain from '../oracles/oracle_Blockchain'
+import coinOracle from '../oracles/oracle_Coin'
+import demoOracle from '../oracles/oracle_Demo'
+import nameServiceOracle from '../oracles/oracle_NameService'
+import theRadicalParty from '../oracles/oracle_TheRadicalParty'
 
 const keyManager = new KeyManager('client')
 
