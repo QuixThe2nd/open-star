@@ -4,19 +4,19 @@ import type { MempoolItem, Message, MethodReturn, Oracle, PeerStates, PingPongMe
 import type { NonEmptyArray } from '../types/generic'
 import { isHexAddress } from '../utils'
 
-export class OpenStar<OracleMethods extends Record<string, (arg: any) => MethodReturn> = Record<string, (arg: any) => MethodReturn>, OracleState extends Record<string, unknown> = Record<string, unknown>, OracleName extends string = string> {
-	public readonly signalling: Signalling<Message<OracleName, OracleMethods, OracleState> | PingPongMessage>
+export class OpenStar<OracleState extends Record<string, unknown> = Record<string, unknown>, OracleName extends string = string, OracleMethods extends Record<string, (arg: any) => MethodReturn> = Record<string, (arg: any) => MethodReturn>> {
+	private readonly signalling: Signalling<Message<OracleName, OracleMethods, OracleState> | PingPongMessage>
 	private epochCount = -1
 	readonly keyManager: KeyManager
 	private lastEpochState = ''
 	connected = false
 	readonly name: OracleName
-	public readonly oracle: Oracle<OracleMethods, OracleState, OracleName>
+	public readonly oracle: Oracle<OracleState, OracleName, OracleMethods>
 	public readonly _peerStates: PeerStates<OracleState> = {}
 	private mempool: Record<string, MempoolItem<OracleMethods>> = {}
 	connectHandler?: () => void
 
-	constructor(oracle: Oracle<OracleMethods, OracleState, OracleName>, keyManager?: KeyManager) {
+	constructor(oracle: Oracle<OracleState, OracleName, OracleMethods>, keyManager?: KeyManager) {
 		this.name = oracle.name
 		this.keyManager = keyManager ?? new KeyManager()
 		this.oracle = oracle
