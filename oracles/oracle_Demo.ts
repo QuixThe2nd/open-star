@@ -1,4 +1,4 @@
-import { type Oracle, StateManager, mode } from '..'
+import { type Oracle, StateManager, mode } from '../src'
 
 const state = new StateManager({ number: 0 })
 const methods = {

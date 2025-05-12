@@ -1,4 +1,4 @@
-import { type NonEmptyArray, type ORC20State, OpenStar, OpenStarRC20, type Oracle, StateManager, mode, parseEther } from '..'
+import { type NonEmptyArray, type ORC20State, OpenStar, OpenStarRC20, type Oracle, StateManager, mode, parseEther } from '../src'
 
 class NameServiceOracle {
 	public state = new StateManager<ORC20State & { hostnames: Record<`${string}.star`, `0x${string}`> }>({

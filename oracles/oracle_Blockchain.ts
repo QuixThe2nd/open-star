@@ -1,4 +1,4 @@
-import { type ORC1State, OpenStarRC1, type Oracle, StateManager } from '..'
+import { type ORC1State, OpenStarRC1, type Oracle, StateManager } from '../src'
 
 // TODO: use difficulty var
 // TODO: handle re-org
