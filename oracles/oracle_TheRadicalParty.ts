@@ -43,12 +43,12 @@ function reputationChange(peer: `0x${string}`, reputation: number) {
 	}
 }
 
-let openStar: OpenStarRC20<typeof methods, typeof state.value>
-const setOpenStar = (newOpenStar: OpenStarRC20<typeof methods, typeof state.value>) => {
+let openStar: OpenStarRC20<typeof state.value, 'ORC20_THERADICALPARTY', typeof methods>
+const setOpenStar = (newOpenStar: OpenStarRC20<typeof state.value, 'ORC20_THERADICALPARTY', typeof methods>) => {
 	openStar = newOpenStar
 }
 
-const oracle: ORC20Oracle<typeof methods, typeof state.value> = {
+const oracle: ORC20Oracle<typeof state.value, 'ORC20_THERADICALPARTY', typeof methods> = {
 	name: 'ORC20_THERADICALPARTY',
 	epochTime: 15_000,
 	ORC20,

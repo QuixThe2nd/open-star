@@ -14,7 +14,7 @@ class NameServiceOracle {
 	}
 	public readonly epochTime = 30_000
 	public readonly name = 'ORC20_NAMESERVICE'
-	openStar!: OpenStarRC20<typeof this.methods, typeof this.state.value>
+	openStar!: OpenStarRC20<typeof this.state.value, 'ORC20_NAMESERVICE',typeof this.methods>
 
 	readonly methods = {
 		register: (args: {
@@ -71,11 +71,11 @@ class NameServiceOracle {
 	readonly transactionToID = <T extends keyof typeof this.methods>(method: T, args: Parameters<(typeof this.methods)[T]>[0]) => `${method}-${JSON.stringify(args)}`
 	readonly startupState = (peerStates: NonEmptyArray<typeof this.state.value>) => mode(peerStates)
 
-	readonly setOpenStar = (newOpenStar: OpenStarRC20<typeof this.methods, typeof this.state.value>) => {
+	readonly setOpenStar = (newOpenStar: OpenStarRC20<typeof this.state.value, 'ORC20_NAMESERVICE',typeof this.methods>) => {
 		this.openStar = newOpenStar
 	}
 }
 
 const nameService = new NameServiceOracle()
-const oracle: ORC20Oracle<typeof nameService.methods, typeof nameService.state.value> = nameService
+const oracle: ORC20Oracle<typeof nameService.state.value, 'ORC20_NAMESERVICE',typeof nameService.methods> = nameService
 export default oracle
