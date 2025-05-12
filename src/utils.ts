@@ -14,6 +14,7 @@ export const parseEther = (value: number, decimals = 8): bigint => BigInt(Math.r
 export const mode = <State>(arr: NonEmptyArray<State>) => arr.toSorted((a,b) => arr.filter(v => v===a).length - arr.filter(v => v===b).length).pop() as State
 
 export function sortObjectByKeys<T extends object>(obj: T): T {
+  if (Array.isArray(obj)) return obj
   const sortedObj: Record<keyof T, T[keyof T]> = {} as Record<keyof T, T[keyof T]>
   for (const key of (Object.keys(obj) as Array<keyof T>).toSorted((a, b) => (a as string).localeCompare(b as string))) {
     sortedObj[key] = typeof obj[key] === 'object' ? sortObjectByKeys(obj[key] as T[keyof T] & object) : obj[key]
