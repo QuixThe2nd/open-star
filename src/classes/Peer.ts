@@ -15,9 +15,9 @@ export class Peer<Message> {
   private readonly sendWSMessage: (message: SignallingMessage) => void
   private readonly onMessage: (_data: Message, _from: `0x${string}`, _callback: (_message: Message) => void) => void
 
-  constructor(keyManager: KeyManager, peerAddress: `0x${string}`, sendWSMessage: typeof this.sendWSMessage, onMessage: typeof this.onMessage, onConnect: () => void, iceServers: { urls: string }[]) {
+  constructor(oracleName: string, keyManager: KeyManager, peerAddress: `0x${string}`, sendWSMessage: typeof this.sendWSMessage, onWebRTCMessage: typeof this.onWebRTCMessage, onConnect: () => void, iceServers: { urls: string }[]) {
     this.sendWSMessage = sendWSMessage
-    this.onMessage = onMessage
+    this.onWebRTCMessage = onWebRTCMessage
     this.keyManager = keyManager
     this.peerAddress = peerAddress
 
@@ -41,8 +41,8 @@ export class Peer<Message> {
       if (!('signature' in data)) return console.error('WebRTC Message invalid 2')
       if (!isHexAddress(data.signature)) return console.error('Signature is not hex')
       if (!(keyManager.verify(data.signature, JSON.stringify(data.message), peerAddress))) return console.error('Invalid message signature')
-      console.log(`Received WebRTC message`, data)
-      this.onMessage(data.message as Message, peerAddress, (responseMessage: Message) => this.send({ message: responseMessage, signature: keyManager.sign(JSON.stringify(responseMessage)) }))
+      console.log(`[${this.oracleName}] Received WebRTC message`, data)
+      this.onWebRTCMessage(data.message as Message, peerAddress, (responseMessage: Message) => this.send({ message: responseMessage, signature: keyManager.sign(JSON.stringify(responseMessage)) }))
     }
     this.conn.oniceconnectionstatechange = () => {
       console.log(`ICE connection state: ${this.conn.iceConnectionState}`)
