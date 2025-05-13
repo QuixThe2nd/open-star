@@ -15,6 +15,7 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
 	public readonly _peerStates: PeerStates<OracleState> = {}
 	private mempool: Record<string, MempoolItem<OracleMethods>> = {}
 	connectHandler?: () => void
+	public readonly nativeMethods: Record<string, (args: any) => MethodReturn> = {}
 
 	constructor(oracle: Oracle<OracleState, OracleName, OracleMethods>, keyManager?: KeyManager) {
 		this.name = oracle.name
@@ -66,11 +67,7 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
 		else if (message[0] === 'pong') console.log('pong')
 		else if (message[0] === this.name) {
 			if (message[1] === 'state') {
-				this.peerStates[from] ??= {
-					lastReceive: null,
-					lastSend: null,
-					reputation: 0
-				}
+				this.peerStates[from] ??= { lastReceive: null, lastSend: null, reputation: 0 }
 				this.peerStates[from].lastReceive = message[2]
 
 				const state = this.oracle.state.value
@@ -93,7 +90,7 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
 					if (!this.keyManager.verify(signature, JSON.stringify(args), args['from'])) return console.error('Invalid signature')
 				}
 
-				if (Object.keys(this.mempool).includes(id)) return console.error('Transaction already in mempool.')
+				if (Object.keys(this.mempool).includes(id)) return console.warn('Transaction already in mempool.')
 				this.mempool[id] = { method: message[2], args: message[3] }
 				Promise.resolve(this.onCall(message[2], message[3]))
 					.then(() => console.log(this.oracle.state.value))
@@ -133,10 +130,16 @@ export class OpenStar<OracleState extends Record<string, unknown> = Record<strin
 	}
 
 	private readonly onCall = async <T extends keyof OracleMethods>(method: T, args: Parameters<OracleMethods[T]>[0]): Promise<string | void> => {
-		// if ('method' in this.nativeMethods) if(method in this.nativeMethods) this.nativeMethods[method](args)
 		if ('methods' in this.oracle) {
 			const status = await this.oracle.methods[method]?.(args)
 			if (typeof status === 'string') console.error(status)
+		}
+		if (method in this.nativeMethods) {
+			const nativeMethod = this.nativeMethods[method as keyof typeof this.nativeMethods]
+			if (nativeMethod) {
+				const status = nativeMethod(args)
+				if (typeof status === 'string') console.error(status)
+			}
 		}
 	}
 

@@ -6,6 +6,9 @@ export class OpenStarRC20<OracleState extends ORC20State = ORC20State, OracleNam
 	public readonly openStar: OpenStar<OracleState, OracleName, OracleMethods>
 	constructor(openStar: OpenStar<OracleState, OracleName, OracleMethods>) {
 		this.openStar = openStar
+		this.openStar.nativeMethods['mint'] = (args) => this.mint(args)
+		this.openStar.nativeMethods['burn'] = (args) => this.burn(args)
+		this.openStar.nativeMethods['transfer'] = (args) => this.transfer(args)
 	}
 	circulatingSupply() {
 		let supply = 0n
@@ -38,12 +41,7 @@ export class OpenStarRC20<OracleState extends ORC20State = ORC20State, OracleNam
 		else state.balances[args.to] = (BigInt(balance) - BigInt(args.amount)).toHex().value
 		this.openStar.oracle.state.set(state)
 	}
-	transfer(args: {
-		from: `0x${string}`
-		to: `0x${string}`
-		amount: `0x${string}`
-		signature: `0x${string}`
-	}): string | void {
+	transfer(args: { from: `0x${string}`, to: `0x${string}`, amount: `0x${string}`, signature: `0x${string}` }): string | void {
 		const balance = this.openStar.oracle.state.value.balances[args.from]
 		if (balance === undefined) return 'No balance'
 		if (Number(balance) < Number(args.amount)) return 'Balance too low'

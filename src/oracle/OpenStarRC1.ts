@@ -7,6 +7,7 @@ export class OpenStarRC1<OracleState extends ORC1State = ORC1State, OracleName e
 	public readonly openStar: OpenStar<OracleState, OracleName, OracleMethods>
 	constructor(openStar: OpenStar<OracleState, OracleName, OracleMethods>) {
 		this.openStar = openStar
+		this.openStar.nativeMethods['addBlock'] = (block: ORC1Block) => this.addBlock(block)
 	}
 	getLatestBlock = () => {
 		return this.openStar.oracle.state.value.blocks[this.openStar.oracle.state.value.blocks.length - 1]
